@@ -1,12 +1,31 @@
-from dotenv import load_dotenv
 import requests
 import os
+import json
 
 # https://developer.themoviedb.org/docs/getting-started
 
 # https://www.themoviedb.org/settings/api
 
 # https://medium.com/@mcasciato/no-imdb-api-check-out-these-options-75917d0fe923
+
+def store_movie_info(movie_info, output_file='movie-info.json'):
+    # Load existing movies or create new array
+    try:
+        with open(output_file, 'r') as f:
+            movies = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        movies = []
+    
+    for movie in movies:
+        if movie['title'] == movie_info['title']:
+            print(f"Movie {movie_info['title']} has already been added")
+            return
+
+    # Append new movie info
+    movies.append(movie_info)
+
+    with open(output_file, 'w') as f:
+        json.dump(movies, f, indent=2)
 
 def tmdb_info(movie_name, tmdb_api_key=os.getenv('TMDB_API_KEY', None)):
     """
@@ -85,3 +104,4 @@ def tmdb_info(movie_name, tmdb_api_key=os.getenv('TMDB_API_KEY', None)):
 
 if __name__ == '__main__':
     print(tmdb_info("Inception"))
+    store_movie_info(tmdb_info("Inception"))
