@@ -4,6 +4,8 @@ import subprocess
 import ctypes
 from pathlib import Path
 from dotenv import load_dotenv
+from get_movie_info import tmdb_info
+import re
 
 load_dotenv()
 
@@ -25,8 +27,51 @@ def dvd_detected(drive_path):
     """
     return os.path.exists(drive_path) and os.path.isdir(drive_path)
 
+def get_title_id(makemkv_info, movie_title, runtime_threshold=10):
+    tmdb_runtime = tmdb_info(movie_title)['runtime']
+
+    print(f"TMDB runtime for {movie_title}: {tmdb_runtime} minutes")
+    
+    for line in makemkv_info.splitlines():
+        processed_line = line.split(',')
+        info_title = processed_line[0].split(':')
+        info_type = info_title[0]
+        runtime = -1
+        if 'TINFO' in info_type:
+            title_id = info_title[1]
+            info = processed_line[-1].strip('"')
+            if re.match(r'^\d{1,2}:\d{2}(:\d{2})?$', info):
+                time_parts = info.split(':')
+                if len(time_parts) == 3:
+                    hours = int(time_parts[0])
+                    minutes = int(time_parts[1])
+                    runtime = (hours * 60) + minutes
+                elif len(time_parts) == 2:
+                    runtime = int(time_parts[0])
+            if runtime >= (tmdb_runtime-runtime_threshold) and runtime <= (tmdb_runtime+runtime_threshold):
+                print(f"Found matching runtime for {movie_title}: title:{title_id}, runtime: {runtime} minutes")
+                return int(title_id)
+
+def get_title_info(makemkv_cli_path=os.getenv('MAKEMKV', "C:\\Program Files (x86)\\MakeMKV\\makemkvcon")):
+    info_command = [
+        makemkv_cli_path,
+        'info',
+        'disc:0',
+        '--robot'
+    ]
+
+    try:
+        print(f"Starting MakeMKV decryption for disc:0 ...")
+        disc_info = subprocess.run(info_command, check=True, text=True, capture_output=True)
+        print(f"Decryption completed. Output saved to {'output_file'}.")
+        return disc_info.stdout
+    except FileNotFoundError:
+        print("Error: MakeMKV not found. Please check the path to MakeMKV.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: MakeMKV failed with error code {e.returncode}.")
+
 def start_makemkv_decryption(output_dir, makemkv_cli_path=os.getenv('MAKEMKV', "C:\\Program Files (x86)\\MakeMKV\\makemkvcon")):
-    command = [
+    rip_command = [
         makemkv_cli_path,
         'backup',
         'disc:0', # is whatever is in the disc drive (may need to change index, if multiple drive). Possible solution is to use the 'file:<>' option and point to 'E:'
@@ -35,17 +80,14 @@ def start_makemkv_decryption(output_dir, makemkv_cli_path=os.getenv('MAKEMKV', "
         '--decrypt'
     ]
 
-    print(f'Executing Command: {' '.join(command)}')
-
     try:
-        # Run the HandBrakeCLI command
         print(f"Starting MakeMKV decryption for {'input_file'}...")
-        subprocess.run(command, check=True)
+        subprocess.run(rip_command, check=True)
         print(f"Decryption completed. Output saved to {'output_file'}.")
     except FileNotFoundError:
-        print("Error: HandBrakeCLI not found. Please check the path to HandBrakeCLI.")
+        print("Error: MakeMKV not found. Please check the path to MakeMKV.")
     except subprocess.CalledProcessError as e:
-        print(f"Error: HandBrakeCLI failed with error code {e.returncode}.")
+        print(f"Error: MakeMKV failed with error code {e.returncode}.")
 
 def is_file_detected(folder_path, interval=1):
     """
@@ -69,7 +111,7 @@ def is_file_detected(folder_path, interval=1):
         # Update the previous state
         previous_files = current_files
 
-def start_handbrake_encode(input_file, output_file, handbrake_cli_path=os.getenv('HANDBRAKE', "C:\\Program Files\\HandBrake\\HandBrakeCLI.exe"), file_format="mp4"):
+def start_handbrake_encode(input_file, output_file, title_id=None, handbrake_cli_path=os.getenv('HANDBRAKE', "C:\\Program Files\\HandBrake\\HandBrakeCLI.exe"), file_format="mp4"):
     """
     Automatically starts HandBrake encoding with the preset 'Fast 1080p30'.
 
@@ -87,7 +129,8 @@ def start_handbrake_encode(input_file, output_file, handbrake_cli_path=os.getenv
         "--preset", "Fast 1080p30"
     ]
 
-    print(f'Executing Command: {' '.join(command)}')
+    if title_id:
+        command.extend(["--title", title_id+1])
 
     try:
         # Run the HandBrakeCLI command
@@ -114,13 +157,18 @@ def main(iso_output_folder, mp4_output_folder, disc_drive):
 
         if not os.path.exists(iso_filename):
             encode = 'y'
+            disc_info = get_title_info()
             start_makemkv_decryption(iso_filename)
         else:
             print('Image already exists')
-            encode = str(input('Procede with encoding y/n: '))
+            encode = str(input('Proceed with encoding y/n: '))
 
         if encode == 'y':
-            start_handbrake_encode(iso_filename, mp4_name)
+            title_id = get_title_id(disc_info, dvd_title)
+            if title_id == -1:
+                start_handbrake_encode(iso_filename, mp4_name)
+            else:
+                start_handbrake_encode(iso_filename, mp4_name, title_id=title_id)
 
         # NOTE: Add code to eject the 'drive' that is created with the movie in MakeMKV
         eject_dvd()
