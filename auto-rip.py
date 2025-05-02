@@ -1,10 +1,11 @@
 import os
+import threading
 import time
 import subprocess
 import ctypes
 from pathlib import Path
 from dotenv import load_dotenv
-from get_movie_info import tmdb_info
+from get_movie_info import tmdb_info, store_movie_info
 import re
 
 load_dotenv()
@@ -27,10 +28,8 @@ def dvd_detected(drive_path):
     """
     return os.path.exists(drive_path) and os.path.isdir(drive_path)
 
-def get_title_id(makemkv_info, movie_title, runtime_threshold=10):
-    tmdb_runtime = tmdb_info(movie_title)['runtime']
-
-    print(f"TMDB runtime for {movie_title}: {tmdb_runtime} minutes")
+def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10):
+    print(f"Looking for runtime: {expected_runtime} minutes")
     
     for line in makemkv_info.splitlines():
         processed_line = line.split(',')
@@ -48,9 +47,30 @@ def get_title_id(makemkv_info, movie_title, runtime_threshold=10):
                     runtime = (hours * 60) + minutes
                 elif len(time_parts) == 2:
                     runtime = int(time_parts[0])
-            if runtime >= (tmdb_runtime-runtime_threshold) and runtime <= (tmdb_runtime+runtime_threshold):
-                print(f"Found matching runtime for {movie_title}: title:{title_id}, runtime: {runtime} minutes")
+            if runtime >= (expected_runtime-runtime_threshold) and runtime <= (expected_runtime+runtime_threshold):
+                print(f"Found matching runtime title:{title_id}, runtime: {runtime} minutes")
                 return int(title_id)
+
+def start_mkv_using_disc(output_dir, title_id, makemkv_cli_path=os.getenv('MAKEMKV', "C:\\Program Files (x86)\\MakeMKV\\makemkvcon")):
+    mkv_command = [
+        makemkv_cli_path,
+        'mkv',
+        'disc:0', # is whatever is in the disc drive (may need to change index, if multiple drive). Possible solution is to use the 'file:<>' option and point to 'E:'
+        f"{title_id}",
+        output_dir,
+        '--noscan'
+    ]
+
+    print(mkv_command)
+
+    try:
+        print(f"Starting MakeMKV decryption for disc:0...")
+        subprocess.run(mkv_command, check=True)
+        print(f"Decryption completed. Output saved to {output_dir}.")
+    except FileNotFoundError:
+        print("Error: MakeMKV not found. Please check the path to MakeMKV.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: MakeMKV failed with error code {e.returncode}.")
 
 def get_title_info(makemkv_cli_path=os.getenv('MAKEMKV', "C:\\Program Files (x86)\\MakeMKV\\makemkvcon")):
     info_command = [
@@ -89,28 +109,6 @@ def start_makemkv_decryption(output_dir, makemkv_cli_path=os.getenv('MAKEMKV', "
     except subprocess.CalledProcessError as e:
         print(f"Error: MakeMKV failed with error code {e.returncode}.")
 
-def is_file_detected(folder_path, interval=1):
-    """
-    Monitors a folder and returns True if a new file is added.
-
-    :param folder_path: Path to the folder to monitor.
-    :param interval: Time interval (in seconds) to check for changes.
-    :return: True if a new file is added, False otherwise.
-    """
-    # Get the initial list of files in the folder
-    previous_files = set(os.listdir(folder_path))
-
-    while True:
-        time.sleep(interval)  # Wait for the specified interval
-        current_files = set(os.listdir(folder_path))  # Get the current list of files
-
-        # Check if there are any new files
-        if current_files - previous_files:
-            return True
-
-        # Update the previous state
-        previous_files = current_files
-
 def start_handbrake_encode(input_file, output_file, title_id=None, handbrake_cli_path=os.getenv('HANDBRAKE', "C:\\Program Files\\HandBrake\\HandBrakeCLI.exe"), file_format="mp4"):
     """
     Automatically starts HandBrake encoding with the preset 'Fast 1080p30'.
@@ -142,7 +140,7 @@ def start_handbrake_encode(input_file, output_file, title_id=None, handbrake_cli
     except subprocess.CalledProcessError as e:
         print(f"Error: HandBrakeCLI failed with error code {e.returncode}.")
 
-def main(iso_output_folder, mp4_output_folder, disc_drive):
+def main(iso_output_folder, mp4_output_folder, mkv_output_folder, disc_drive):
     if dvd_detected(disc_drive):
         dvd_title = str(input('Title of DVD: '))
 
@@ -164,18 +162,44 @@ def main(iso_output_folder, mp4_output_folder, disc_drive):
             encode = str(input('Proceed with encoding y/n: '))
 
         if encode == 'y':
-            title_id = get_title_id(disc_info, dvd_title)
+            movie_info = tmdb_info(dvd_title)
+            store_movie_info(movie_info)
+            title_id = get_title_id(disc_info, movie_info['runtime'])
             if title_id == -1:
                 start_handbrake_encode(iso_filename, mp4_name)
             else:
-                start_handbrake_encode(iso_filename, mp4_name, title_id=title_id)
+                current_files = os.listdir(mkv_output_folder)
+                mkv_thread = threading.Thread(
+                    target=start_mkv_using_disc,
+                    args=(mkv_output_folder, title_id)
+                )
+                handbrake_thread = threading.Thread(
+                    target=start_handbrake_encode,
+                    args=(iso_filename, mp4_name),
+                    kwargs={'title_id': title_id}
+                )
 
-        # NOTE: Add code to eject the 'drive' that is created with the movie in MakeMKV
+                # Start both threads
+                mkv_thread.start()
+                handbrake_thread.start()
+
+                # Wait for both threads to complete
+                mkv_thread.join()
+                handbrake_thread.join()
+
+                updated_files = os.listdir(mkv_output_folder)
+                new_file_name = list(set(updated_files) - set(current_files))
+                if new_file_name:
+                    new_file_path = os.path.join(mkv_out_dir, new_file_name[0])
+                    new_name = os.path.join(mkv_out_dir, f"{dvd_title}.mkv")
+                    os.rename(new_file_path, new_name)
         eject_dvd()
 
 if __name__ == '__main__':
     iso_out_dir = os.getenv('ISO_OUT_DIR', 'C:\\iso_movies\\')
     mp4_out_dir = os.getenv('MP4_OUT_DIR', 'C:\\mp4_movies\\')
+    mkv_out_dir = os.getenv('MKV_OUT_DIR', 'C:\\mkv_movies\\')
     disc_drive = os.getenv('DISC_DRIVE', 'E:\\')
+
     while True:
-        main(iso_out_dir, mp4_out_dir, disc_drive)
+        main(iso_out_dir, mp4_out_dir, mkv_out_dir, disc_drive)
