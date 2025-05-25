@@ -19,7 +19,7 @@ def store_media_info(movie_info, output_file='movie-info.json'):
     for movie in movies:
         if movie['title'] == movie_info['title']:
             print(f"Movie {movie_info['title']} has already been added")
-            return
+            return None
 
     # Append new movie info
     movies.append(movie_info)
@@ -113,13 +113,13 @@ def tmdb_tv_info(tv_name, tmdb_api_key=os.getenv('TMDB_API_KEY', None)):
                                     'overview': episode_data['overview'],
                                     'still_path': f"https://image.tmdb.org/t/p/w500{episode_data['still_path']}" if episode_data['still_path'] else None,
                                     'tmdb_id': episode_data['id'],
-                                    'name': episode_data['name'],
+                                    'runtime': episode_data['runtime'],
+                                    'episode_name': episode_data['name'],
                                     'rating': episode_data['vote_average'],
                                     'director': get_director(episode_data['crew']),
                                     'guest_stars': guest_stars
                                 })
                         
-                        print(season)
                         flatten_season = {
                             'season_number': season_number,
                             'air_date': season['air_date'], # convert to datetime object
