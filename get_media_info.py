@@ -8,24 +8,24 @@ import json
 
 # https://medium.com/@mcasciato/no-imdb-api-check-out-these-options-75917d0fe923
 
-def store_media_info(movie_info, output_file='movie-info.json'):
-    # Load existing movies or create new array
+def store_media_info(media_info, output_file='movie-info.json'):
+    # Load existing media or create new array
     try:
         with open(output_file, 'r') as f:
-            movies = json.load(f)
+            existing_media = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        movies = []
+        existing_media = []
     
-    for movie in movies:
-        if movie['title'] == movie_info['title']:
-            print(f"Movie {movie_info['title']} has already been added")
+    for media in existing_media:
+        if media['title'] == media_info['title']:
+            print(f"Media {media_info['title']} has already been added")
             return None
 
-    # Append new movie info
-    movies.append(movie_info)
+    # Append new media info
+    existing_media.append(media_info)
 
     with open(output_file, 'w') as f:
-        json.dump(movies, f, indent=2)
+        json.dump(existing_media, f, indent=2)
 
 def get_director(crew):
     for crew_member in crew:
