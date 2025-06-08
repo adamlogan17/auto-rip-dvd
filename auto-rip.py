@@ -28,7 +28,7 @@ def dvd_detected(drive_path):
     """
     return os.path.exists(drive_path) and os.path.isdir(drive_path)
 
-def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10):
+def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10, previous_title_ids=[]):
     print(f"Looking for runtime: {expected_runtime} minutes")
     
     for line in makemkv_info.splitlines():
@@ -38,7 +38,7 @@ def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10):
         runtime = -1
         highest_runtime = -1
         if 'TINFO' in info_type:
-            title_id = info_title[1]
+            title_id = int(info_title[1])
             info = processed_line[-1].strip('"')
 
             # Checks if the info is a runtime in the format HH:MM
@@ -50,15 +50,17 @@ def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10):
                     runtime = (hours * 60) + minutes
                 elif len(time_parts) == 2:
                     runtime = int(time_parts[0])
-            if runtime >= (expected_runtime-runtime_threshold) and runtime <= (expected_runtime+runtime_threshold):
+            if runtime >= (expected_runtime-runtime_threshold) and runtime <= (expected_runtime+runtime_threshold) and title_id not in previous_title_ids:
                 print(f"Found matching runtime title: {title_id}, runtime: {runtime} minutes")
-                return int(title_id)
+                return title_id
             elif runtime > highest_runtime:
                 highest_runtime = runtime
-                backup_title_id = int(title_id)
+                backup_title_id = title_id
     if highest_runtime > 0:
         print(f"No exact match found, using highest runtime title: {backup_title_id}, runtime: {highest_runtime} minutes")
         return backup_title_id
+    print("No matching title found.")
+    return -1
 
 def convert_to_mkv_makemkv(output_dir, title_id, iso_filename, makemkv_cli_path=os.getenv('MAKEMKV', "C:\\Program Files (x86)\\MakeMKV\\makemkvcon")):
     mkv_command = [
@@ -206,10 +208,12 @@ def main(output_folders):
     dvd_title = str(input('Title of DVD (Movie/TV Series Name): ')).strip()
     media_info = {}
     iso_name = ''
+    tv_show = False
 
     # Handles DVDs with multiple episodes
     tv_show_input = str((input('Is this a TV show y/n: ')))
     if tv_show_input == 'y':
+        tv_show = True
         # Get the media info from TMDB
         media_info = tmdb_tv_info(dvd_title)
         number_of_seasons = len(media_info['seasons'])
@@ -245,10 +249,12 @@ def main(output_folders):
 
         # NOTE: Maybe have the dict as a user input and if one is missing, assume that it does not need to create the file for that
         # NOTE: For iso, if it is not present, just point it to the dvd drive directly
+        out_folders['mkv'] = Path(out_folders['mkv']) / 'TV Shows'
         for key in out_folders:
             out_folders[key] = Path(out_folders[key]) / dvd_title / season_folder_name
             out_folders[key].mkdir(parents=True, exist_ok=True)
     else:
+        out_folders['mkv'] = Path(out_folders['mkv']) / 'Movies'
         media_info = tmdb_movie_info(dvd_title)
         iso_name = dvd_title
         titles_to_rip.append(
@@ -274,13 +280,16 @@ def main(output_folders):
         # This also means they can enter the required information and then leave
         disc_info = get_title_info(iso_filename)
 
+        previous_title_ids = [] # Used to prevent the same title_id being used for multiple titles
+        threshold = 4 if tv_show else 10 # Threshold needs to be shorter, to allow for the specific episode to be found
         for title in titles_to_rip:
             title_id = -1 # Default to -1, prevents same title_id being used for multiple titles
-            title_id = get_title_id(disc_info, title['expected_runtime'])
+            title_id = get_title_id(disc_info, title['expected_runtime'], runtime_threshold=threshold, previous_title_ids=previous_title_ids)
             if title_id == -1:
                 print(f"Title ID not found for {title['file_name']}. Skipping encoding.")
             else:
                 rip_dvd_title(iso_filename, out_folders['mp4'], out_folders['mkv'], title_id, title['file_name'])
+                previous_title_ids.append(title_id)
     else:
         print("\nEncoding skipped.")
 
