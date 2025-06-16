@@ -28,20 +28,26 @@ def dvd_detected(drive_path):
     """
     return os.path.exists(drive_path) and os.path.isdir(drive_path)
 
-def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10, previous_title_ids=[]):
-    print(f"Looking for runtime: {expected_runtime} minutes")
+def parse_makemkv_title_info(makemkv_info):
+    """
+    Helper function to parse MakeMKV title information and extract runtime data.
+    
+    :param makemkv_info: Output from MakeMKV info command
+    :return: List of dictionaries containing title IDs and their runtimes
+    """
+    title_data = []
     
     for line in makemkv_info.splitlines():
         processed_line = line.split(',')
         info_title = processed_line[0].split(':')
         info_type = info_title[0]
-        runtime = -1
-        highest_runtime = -1
+        
         if 'TINFO' in info_type:
             title_id = int(info_title[1])
             info = processed_line[-1].strip('"')
-
-            # Checks if the info is a runtime in the format HH:MM
+            runtime = -1
+            
+            # Check if the info is a runtime in the format HH:MM or HH:MM:SS
             if re.match(r'^\d{1,2}:\d{2}(:\d{2})?$', info):
                 time_parts = info.split(':')
                 if len(time_parts) == 3:
@@ -49,16 +55,86 @@ def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10, previous_
                     minutes = int(time_parts[1])
                     runtime = (hours * 60) + minutes
                 elif len(time_parts) == 2:
-                    runtime = int(time_parts[0])
-            if runtime >= (expected_runtime-runtime_threshold) and runtime <= (expected_runtime+runtime_threshold) and title_id not in previous_title_ids:
-                print(f"Found matching runtime title: {title_id}, runtime: {runtime} minutes")
-                return title_id
-            elif runtime > highest_runtime:
-                highest_runtime = runtime
-                backup_title_id = title_id
+                    hours = int(time_parts[0])
+                    minutes = int(time_parts[1])
+                    runtime = (hours * 60) + minutes
+            
+            # Only add entries with valid runtime data
+            if runtime > 0:
+                title_data.append({
+                    'title_id': title_id,
+                    'runtime': runtime,
+                    'info': info
+                })
+    
+    return title_data
+
+def special_feature_titles(makemkv_info, special_features_info=[]):
+    """
+    Due to the unique structure of special feature discs, this function rips every title on the disc and put this into a different folder.
+    It can accept a dictionary, with the name and expected runtime of the special feature titles, to attempt to add some structure to the output.
+    """
+    all_titles = []
+    previous_title_ids = []
+    previous_title_episodes = [] # Used to prevent the same episode being used for multiple titles
+    title_data = parse_makemkv_title_info(makemkv_info)
+    
+    for title in title_data:
+        title_id = title['title_id']
+        runtime = title['runtime']
+        filename = f"Title {title_id}"
+        
+        # Check if this title matches any special feature
+        for feature in special_features_info:
+            expected_runtime = feature['runtime']
+            runtime_threshold = 5  # Threshold in minutes
+            
+            if runtime >= (expected_runtime - runtime_threshold) and runtime <= (expected_runtime + runtime_threshold) and title_id not in previous_title_ids and feature['episode_number'] not in previous_title_episodes:
+                previous_title_episodes.append(feature['episode_number'])
+                filename = feature['episode_name']
+                break
+                
+        previous_title_ids.append(title_id)
+        all_titles.append({
+            'title_id': title_id,
+            'file_name': filename
+        })
+        
+    return all_titles
+
+def get_title_id(makemkv_info, expected_runtime, runtime_threshold=10, previous_title_ids=[]):
+    """
+    Find a title that matches the expected runtime.
+    
+    :param makemkv_info: Output from MakeMKV info command
+    :param expected_runtime: Expected runtime in minutes
+    :param runtime_threshold: Allowed deviation from expected runtime
+    :param previous_title_ids: List of title IDs to exclude
+    :return: Matching title ID or -1 if not found
+    """
+    print(f"Looking for runtime: {expected_runtime} minutes")
+    
+    title_data = parse_makemkv_title_info(makemkv_info)
+    highest_runtime = -1
+    backup_title_id = -1
+    
+    for title in title_data:
+        title_id = title['title_id']
+        runtime = title['runtime']
+        
+        # Check if this title matches the expected runtime
+        if runtime >= (expected_runtime - runtime_threshold) and runtime <= (expected_runtime + runtime_threshold) and title_id not in previous_title_ids:
+            print(f"Found matching runtime title: {title_id}, runtime: {runtime} minutes")
+            return title_id
+        elif runtime > highest_runtime:
+            highest_runtime = runtime
+            backup_title_id = title_id
+            
+    # Fall back to the title with the highest runtime
     if highest_runtime > 0:
         print(f"No exact match found, using highest runtime title: {backup_title_id}, runtime: {highest_runtime} minutes")
         return backup_title_id
+        
     print("No matching title found.")
     return -1
 
@@ -211,7 +287,7 @@ def main(output_folders):
     tv_show = False
 
     # Handles DVDs with multiple episodes
-    tv_show_input = str((input('Is this a TV show y/n: ')))
+    tv_show_input = str((input('Is this a TV show? y/n: '))).strip().lower()
     if tv_show_input == 'y':
         tv_show = True
         # Get the media info from TMDB
@@ -222,9 +298,9 @@ def main(output_folders):
         # Get user input for season and episode information
         season_number = 1
         if number_of_seasons > 1:
-            season_number = int(input(f'Enter the season number for this disc (1-{number_of_seasons}): '))
-        first_episode = int(input(f'Enter the first episode number: '))
-        num_episodes = int((input('Enter the number of episodes on the disc: ')))
+            season_number = int(input(f'Enter the season number for this disc (1-{number_of_seasons}): ').strip())
+        first_episode = int(input(f'Enter the first episode number: ').strip())
+        num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
 
         # Adds a leading zero to the season and episode numbers for formatting (both Plex and Jellyfin use this format)
         formatted_season = f"{season_number:02d}"
