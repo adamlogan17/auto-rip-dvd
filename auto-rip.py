@@ -226,6 +226,8 @@ def convert_to_mp4_handbrake(input_file, output_file, title_id=None, handbrake_c
         print(f"Error: HandBrakeCLI failed with error code {e.returncode}.")
 
 def rip_dvd_title(iso_filename, mp4_output_folder, mkv_output_folder, title_id, file_name):
+    # Sanitize the file name for Windows compatibility
+    file_name = re.sub(r'[\\/:*?"<>|]', ' ', file_name)
     mp4_name = Path(mp4_output_folder) / f"{file_name}.mp4"
     mkv_name = os.path.join(mkv_output_folder, f"{file_name}.mkv")
     mkv_started = False
@@ -286,6 +288,9 @@ def main(output_folders):
     iso_name = ''
     tv_show = False
 
+    special_feature_input = str(input('Is this a special features disc? y/n: ')).strip().lower()
+    special_feature = special_feature_input == 'y'
+
     # Handles DVDs with multiple episodes
     tv_show_input = str((input('Is this a TV show? y/n: '))).strip().lower()
     if tv_show_input == 'y':
@@ -299,8 +304,19 @@ def main(output_folders):
         season_number = 1
         if number_of_seasons > 1:
             season_number = int(input(f'Enter the season number for this disc (1-{number_of_seasons}): ').strip())
-        first_episode = int(input(f'Enter the first episode number: ').strip())
-        num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
+
+        # Special features, need to be handle here, so it can be added as 'Season 0', within the TV folder structure
+        # This is how both plex and Jellyfin handle special features
+        # Setting the 'first_episode' and 'num_episode' to 0, prevents the for loop below from entering
+        if special_feature:
+            season_number = 0
+            first_episode = 0
+            num_episodes = 0
+        else:
+            first_episode = int(input(f'Enter the first episode number: ').strip())
+            num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
+            # 1 is subtracted, is because the 'first episode' is included in the count
+            iso_name = f"{dvd_title} s{formatted_season}e{first_episode:02d} - e{((first_episode+num_episodes)-1):02d}"
 
         # Adds a leading zero to the season and episode numbers for formatting (both Plex and Jellyfin use this format)
         formatted_season = f"{season_number:02d}"
@@ -317,9 +333,6 @@ def main(output_folders):
                 }
             )
 
-        # 1 is subtracted, is because the 'first episode' is included in the count
-        iso_name = f"{dvd_title} s{formatted_season}e{first_episode:02d} - e{((first_episode+num_episodes)-1):02d}"
-
         # Create the path for the tv show and seasons, based on the file structure provided by Plex and Jellyfin
         season_folder_name = f"Season {formatted_season}"
 
@@ -328,6 +341,11 @@ def main(output_folders):
         out_folders['mkv'] = Path(out_folders['mkv']) / 'TV Shows'
         for key in out_folders:
             out_folders[key] = Path(out_folders[key]) / dvd_title / season_folder_name
+            out_folders[key].mkdir(parents=True, exist_ok=True)
+    elif special_feature:
+        # Special handling needs to be had if it is special features for a movie and not a TV show
+        for key in out_folders:
+            out_folders[key] = Path(out_folders[key]) / '' / f"{dvd_title} Special Features"
             out_folders[key].mkdir(parents=True, exist_ok=True)
     else:
         out_folders['mkv'] = Path(out_folders['mkv']) / 'Movies'
@@ -339,6 +357,9 @@ def main(output_folders):
                 'expected_runtime': media_info['runtime']
             }
         )
+
+    if special_feature:
+        iso_name = f"{dvd_title} Special Features"
 
     iso_filename = Path(out_folders['iso']) / f"{iso_name}.iso"
 
@@ -356,11 +377,26 @@ def main(output_folders):
         # This also means they can enter the required information and then leave
         disc_info = get_title_info(iso_filename)
 
+        # Gets all the titles and assigns a name to these
+        if special_feature:
+            special_features_info =  media_info['specials']['episodes'] if media_info else []
+            titles_to_rip = special_feature_titles(disc_info, special_features_info=special_features_info)
+            if not titles_to_rip:
+                print("No special features found. Exiting.")
+                eject_dvd()
+                return None
+            print(titles_to_rip)
+
         previous_title_ids = [] # Used to prevent the same title_id being used for multiple titles
         threshold = 4 if tv_show else 10 # Threshold needs to be shorter, to allow for the specific episode to be found
         for title in titles_to_rip:
             title_id = -1 # Default to -1, prevents same title_id being used for multiple titles
-            title_id = get_title_id(disc_info, title['expected_runtime'], runtime_threshold=threshold, previous_title_ids=previous_title_ids)
+            # As this is an int, the explicit check for None is needed. This is due to '0' being a valid title_id but it is treated as False in Python
+            if title['title_id'] is not None:
+                title_id = title['title_id']
+            else:
+                title_id = get_title_id(disc_info, title['expected_runtime'], runtime_threshold=threshold, previous_title_ids=previous_title_ids)
+
             if title_id == -1:
                 print(f"Title ID not found for {title['file_name']}. Skipping encoding.")
             else:
