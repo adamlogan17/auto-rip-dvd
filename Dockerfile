@@ -14,16 +14,17 @@ RUN pip3 install --break-system-packages pipenv
 
 RUN add-apt-repository -y ppa:stebbins/handbrake-releases || true
 RUN apt-get update
-# /usr/bin/HandBrakeCLI is the command line interface for HandBrake
 RUN apt-get install -y handbrake-cli
+ENV HANDBRAKE=/usr/bin/HandBrakeCLI
 
 RUN add-apt-repository -y ppa:heyarje/makemkv-beta
 RUN apt-get update
 RUN apt-get install -y makemkv-bin makemkv-oss
+ENV MAKEMKV=/usr/bin/makemkvcon
 
 ENV PATH="/usr/bin:${PATH}"
 
-COPY get_movie_info.py .
+COPY get_media_info.py .
 COPY auto-rip.py .
 COPY Pipfile .
 COPY Pipfile.lock .
