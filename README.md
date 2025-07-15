@@ -2,7 +2,24 @@
 
 A python script to rip DVDs to ISO, MP4 and MKV file formats
 
-## Docker Windows Instructions
+## Docker
+
+If wishing to run the program using `docker compose` the 2 following commands must be used.
+
+```console
+docker compose up -d
+docker exec -it auto-ripping python3 auto-rip.py
+```
+
+To stop the containers from running, use the command below.
+
+```console
+docker compose down
+```
+
+### Docker Windows Instructions
+
+It is first important to note, that DVD drives are not supported with docker and Windows. This means that there must be inserted when the docker container is ran. It is possible to still use the `docker-compose.yaml` file to launch `plex` and `jellyfin` and simply let the `auto-rip` container fail, and the `auto-rip.py` script can be ran on the host system.
 
 If wishing to use Docker on windows, it is important to note that you first must need to mount it to WSL.
 
@@ -47,3 +64,4 @@ How movies and TV shows are named are based of the advice given from Jellyfin an
 - Jellyfin in docker-compose
 - Add .plexmatch file [here](https://support.plex.tv/articles/plexmatch/)
 - Disable auto update check [forum](https://forum.makemkv.com/forum/viewtopic.php?t=8397)
+- Refactor the `auto-rip.py` script (especially the `main`) function
