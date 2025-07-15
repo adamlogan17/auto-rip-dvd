@@ -280,30 +280,34 @@ def rip_dvd_title(iso_filename, mp4_output_folder, mkv_output_folder, title_id, 
         print(f"MP4 conversion completed: {mp4_name}")
 
 def console_user_input():
+    tv_show_info = None
+
     dvd_title = str(input('Title of DVD (Movie/TV Series Name): ')).strip()
 
     special_feature_input = str(input('Is this a special features disc? y/n: ')).strip().lower()
     special_feature = special_feature_input == 'y'
 
-
     tv_show_input = str((input('Is this a TV show? y/n: '))).strip().lower()
     
-    if tv_show_input == 'y' and not special_feature:
-        season_number = int(input(f'Enter the season number for this disc: ').strip())
-        first_episode = int(input(f'Enter the first episode number: ').strip())
-        num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
-    elif tv_show_input == 'y':
+    if tv_show_input == 'y':
         season_number = 0
         first_episode = 0
         num_episodes = 0
 
-    return {
-        'dvd_title': dvd_title,
-        'tv_show': {
+        if special_feature_input != 'y':
+            season_number = int(input(f'Enter the season number for this disc: ').strip())
+            first_episode = int(input(f'Enter the first episode number: ').strip())
+            num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
+
+        tv_show_info = {
             'season_number': season_number,
             'first_episode': first_episode,
             'num_episodes': num_episodes
-        },
+        }
+
+    return {
+        'dvd_title': dvd_title,
+        'tv_show': tv_show_info,
         'special_feature': special_feature
     }
 
