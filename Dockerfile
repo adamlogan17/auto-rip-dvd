@@ -1,6 +1,8 @@
 # Can't use python image as this causes errors when installing makemkv
 FROM ubuntu:latest
 
+WORKDIR /code
+
 RUN apt-get update
 RUN apt-get install -y software-properties-common
 
@@ -24,10 +26,10 @@ ENV MAKEMKV=/usr/bin/makemkvcon
 
 ENV PATH="/usr/bin:${PATH}"
 
-COPY get_media_info.py .
-COPY auto-rip.py .
-COPY Pipfile .
-COPY Pipfile.lock .
+COPY get_media_info.py /code/get_media_info.py
+COPY auto-rip.py /code/auto-rip.py
+COPY Pipfile /code/Pipfile
+COPY Pipfile.lock /code/Pipfile.lock
 
 # should use pipenv sync instead (might encounter the env issue)
 RUN pipenv requirements > requirements.txt
