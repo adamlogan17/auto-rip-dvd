@@ -23,7 +23,6 @@ def transcribe(audio):
     segments = list(segments)
     print(segments)
     for segment in segments:
-        # print(segment)
         print(f"[{segment.start}s -> {segment.end}s] {segment.text}")
     return language, segments
 
@@ -54,12 +53,13 @@ def generate_subtitle_file(language, segments, input_video):
     f.close()
     return subtitle_file
 
-def add_subtitle_to_video(input_video, subtitle_file, soft_subtitle=True):
+def add_subtitle_to_video(input_video, subtitle_file, soft_subtitle=True, overwrite_input=True):
     subtitle_language = subtitle_file.split(".")[-2]
     input_video_name = format_input_video_name(input_video)
     video_input_stream = ffmpeg.input(input_video)
     subtitle_input_stream = ffmpeg.input(subtitle_file)
-    output_video = f"output-{input_video_name}.mp4"
+    if overwrite_input:
+        output_video = f"output-{input_video_name}.mp4"
     subtitle_track_title = subtitle_file.replace(".srt", "")
 
     # A 'soft subtitle' adds the subtitle as a separate track in the video file, which can be turned on or off by the user.
