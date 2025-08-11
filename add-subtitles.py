@@ -4,10 +4,26 @@ import ffmpeg
 from faster_whisper import WhisperModel
 
 def format_input_video_name(input_video):
+    """Formats the input video name by replacing spaces with hyphens and converting to lowercase.
+
+    Args:
+        input_video (str): The name of the input video file.
+
+    Returns:
+        str: The formatted video name.
+    """
     return input_video.split('.')[0].replace(" ", "-").lower()
 
 # NOTE: This requires 'brew install ffmpeg' so need to make a docker container for this script
 def extract_audio(input_video):
+    """Extracts audio from a video file using ffmpeg.
+
+    Args:
+        input_video (str): The path to the input video file.
+
+    Returns:
+        str: The path to the extracted audio file.
+    """
     input_video_name = format_input_video_name(input_video)
     extracted_audio = f"audio-{input_video_name}.wav"
     stream = ffmpeg.input(input_video)
@@ -16,6 +32,14 @@ def extract_audio(input_video):
     return extracted_audio
 
 def transcribe(audio):
+    """Transcribes an audio file using the Whisper ASR model.
+
+    Args:
+        audio (str): The path to the audio file.
+
+    Returns:
+        tuple: A tuple containing the detected language (str) and a list of transcribed segments.
+    """
     model = WhisperModel("small")
     segments, info = model.transcribe(audio)
     language = info.language
@@ -27,6 +51,14 @@ def transcribe(audio):
     return language, segments
 
 def format_time(seconds):
+    """Formats seconds into a time string (HH:MM:SS,ms).
+
+    Args:
+        seconds (float): The time in seconds.
+
+    Returns:
+        str: The formatted time string.
+    """
     hours = math.floor(seconds / 3600)
     seconds %= 3600
     minutes = math.floor(seconds / 60)
@@ -37,6 +69,16 @@ def format_time(seconds):
     return formatted_time
 
 def generate_subtitle_file(language, segments, input_video):
+    """Generates a subtitle file (.srt) from transcribed segments.
+
+    Args:
+        language (str): The language of the subtitles.
+        segments (list): A list of transcribed segments from whisper.
+        input_video (str): The name of the input video file.
+
+    Returns:
+        str: The path to the generated subtitle file.
+    """
     input_video_name = format_input_video_name(input_video)
     subtitle_file = f"sub-{input_video_name}.{language}.srt"
     text = ""
@@ -54,6 +96,17 @@ def generate_subtitle_file(language, segments, input_video):
     return subtitle_file
 
 def add_subtitle_to_video(input_video, subtitle_file, soft_subtitle=True, overwrite_input=True):
+    """Adds a subtitle file to a video file.
+
+    Args:
+        input_video (str): The path to the input video file.
+        subtitle_file (str): The path to the subtitle file.
+        soft_subtitle (bool, optional): If True, adds the subtitle as a separate track. 
+                                        If False, burns the subtitle into the video. 
+                                        Defaults to True.
+        overwrite_input (bool, optional): If True, creates a new output file instead of 
+                                        overwriting the input. Defaults to True.
+    """
     subtitle_language = subtitle_file.split(".")[-2]
     input_video_name = format_input_video_name(input_video)
     video_input_stream = ffmpeg.input(input_video)
