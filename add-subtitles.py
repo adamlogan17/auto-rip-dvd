@@ -54,10 +54,33 @@ def generate_subtitle_file(language, segments, input_video):
     f.close()
     return subtitle_file
 
+def add_subtitle_to_video(input_video, subtitle_file, soft_subtitle=True):
+    subtitle_language = subtitle_file.split(".")[-2]
+    input_video_name = format_input_video_name(input_video)
+    video_input_stream = ffmpeg.input(input_video)
+    subtitle_input_stream = ffmpeg.input(subtitle_file)
+    output_video = f"output-{input_video_name}.mp4"
+    subtitle_track_title = subtitle_file.replace(".srt", "")
+
+    # A 'soft subtitle' adds the subtitle as a separate track in the video file, which can be turned on or off by the user.
+    # A 'hard subtitle' burns the subtitle into the video, which cannot be turned off
+    if soft_subtitle:
+        stream = ffmpeg.output(
+            video_input_stream, subtitle_input_stream, output_video, **{"c": "copy", "c:s": "mov_text"},
+            **{"metadata:s:s:0": f"language={subtitle_language}",
+            "metadata:s:s:0": f"title={subtitle_track_title}"}
+        )
+        ffmpeg.run(stream, overwrite_output=True)
+    else:
+        stream = ffmpeg.output(video_input_stream, output_video, vf=f"subtitles={subtitle_file}")
+
+        ffmpeg.run(stream, overwrite_output=True)
+
 if __name__ == "__main__":
-    input_file = "Italian Job.mp4"
+    input_file = ""
     audio = extract_audio(input_file)
     language, segments = transcribe(audio=audio)
     subtitle_file = generate_subtitle_file(language, segments, input_file)
     print(f"Subtitle file generated: {subtitle_file}")
+    add_subtitle_to_video(input_file, subtitle_file, soft_subtitle=True)
 
