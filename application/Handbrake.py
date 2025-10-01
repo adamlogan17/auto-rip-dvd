@@ -1,8 +1,7 @@
 import json
 import subprocess
-from VideoRipApp import VideoRipApp, TitleInfo, SeasonInformation
+from VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
-import os
 
 class Handbrake(VideoRipApp):
     def __init__(self, application_path: str):
@@ -44,15 +43,13 @@ class Handbrake(VideoRipApp):
         return title_data
         # return title_set['MainFeature'] # Fallback to main feature if no match found, which is the longest title
     
-    def extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
+    def _extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
         """
         Automatically starts HandBrake encoding with the preset 'Fast 1080p30'.
 
         :param input_file: Path to the input video file.
         :param output_file: Path to the output encoded video file.
         """
-
-        output_file = self.get_output_filename(output_path)
 
         # HandBrakeCLI command with the 'Fast 1080p30' preset
         # The preset does not upscale, this is an upper limit of quality
@@ -84,5 +81,5 @@ if __name__ == "__main__":
     main_feature_title = app.get_main_feature("F:\\Movies\\21 Jump Street.iso", 105)
     print(f"Main feature title ID: {main_feature_title}")
 
-    app.extract_video_file("F:\\Movies\\21 Jump Street.iso", main_feature_title, "F:\\Movies")
+    app.extract_video("F:\\Movies\\21 Jump Street.iso", main_feature_title, "F:\\test")
 

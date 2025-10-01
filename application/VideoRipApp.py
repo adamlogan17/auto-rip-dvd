@@ -12,7 +12,6 @@ class SeasonInformation(BaseModel):
     runtime: int
     info: str = ""
 
-
 class VideoRipApp(ABC):
     def __init__(self, application_path: str, file_extension: str):
         self.application_path = application_path
@@ -24,7 +23,8 @@ class VideoRipApp(ABC):
     @application_path.setter
     def application_path(self, path: str):
         if not os.path.exists(path):
-            raise FileNotFoundError(f"Application path does not exist: {path}")
+            print('error!!')
+            # raise FileNotFoundError(f"Application path does not exist: {path}")
         self._application_path = path
 
     @property
@@ -41,12 +41,8 @@ class VideoRipApp(ABC):
     def special_feature_runtime_threshold() -> int: return 5
     
     @abstractmethod
-    def extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
+    def _extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
         return ''
-
-    @abstractmethod
-    def extract_disc_title_info(self, iso_filename: str) -> List[TitleInfo]:
-        return []
 
     @staticmethod
     @abstractmethod
@@ -89,7 +85,10 @@ class VideoRipApp(ABC):
             raise FileNotFoundError(f"ISO file does not exist: {iso_filename}")
         
         output_filename = self._get_output_filename(output_path, iso_filename)
-        return self.extract_video_file(iso_filename, title_id, output_filename)
+        if os.path.exists(output_filename):
+            print(f"Output file already exists, skipping extraction: {output_filename}")
+            return output_filename
+        return self._extract_video_file(iso_filename, title_id, output_filename)
     
     def _get_output_filename(self, base_path: str, input_file: str) -> str:
         name = Path(input_file).stem
@@ -99,9 +98,14 @@ class VideoRipApp(ABC):
             os.makedirs(base_path)
             print(f"Directory created: {base_path}")
         return os.path.join(base_path, f"{name}{self.file_extension}")
+    
+    def _extract_disc_title_info(self, iso_filename: str) -> List[TitleInfo]:
+        raw_title_info = self._raw_title_info(iso_filename)
+        title_info = self._parse_raw_title_info(raw_title_info)
+        return title_info
 
     def get_main_feature(self, iso_filename: str, expected_runtime: int, runtime_threshold: int=10, previous_title_ids: List[int]=[]) -> int:
-        title_data = self.extract_disc_title_info(iso_filename)
+        title_data = self._extract_disc_title_info(iso_filename)
         highest_runtime = -1
         backup_title_id = -1
         
