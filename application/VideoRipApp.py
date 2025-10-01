@@ -23,7 +23,8 @@ class VideoRipApp(ABC):
     @application_path.setter
     def application_path(self, path: str):
         if not os.path.exists(path):
-            print('error!!')
+            # Find out why this causes an error with makemkv
+            print('Application Path not Valid')
             # raise FileNotFoundError(f"Application path does not exist: {path}")
         self._application_path = path
 
