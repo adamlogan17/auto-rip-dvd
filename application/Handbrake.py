@@ -78,7 +78,8 @@ if __name__ == "__main__":
     app = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe")
     print(app.application_path)
 
-    main_feature_title = app.get_main_feature("F:\\Movies\\21 Jump Street.iso", 105)
+    disc_info = app.extract_disc_title_info("F:\\Movies\\21 Jump Street.iso")
+    main_feature_title = app.get_main_feature(disc_info, 105)
     print(f"Main feature title ID: {main_feature_title}")
 
     app.extract_video("F:\\Movies\\21 Jump Street.iso", main_feature_title, "F:\\test")

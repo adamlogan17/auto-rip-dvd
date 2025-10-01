@@ -124,8 +124,8 @@ if __name__ == "__main__":
     print(app.application_path)
 
     iso_file = app.disc_backup("F:\\test", "A Few Good Men")
-
-    main_feature_title = app.get_main_feature(iso_file, 138)
+    disc_info = app.extract_disc_title_info(iso_file)
+    main_feature_title = app.get_main_feature(disc_info, 138)
     print(f"Main feature title ID: {main_feature_title}")
 
     app.extract_video(iso_file, main_feature_title, "F:\\test")

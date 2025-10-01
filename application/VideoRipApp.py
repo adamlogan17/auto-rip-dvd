@@ -23,7 +23,7 @@ class VideoRipApp(ABC):
     @application_path.setter
     def application_path(self, path: str):
         if not os.path.exists(path):
-            # Find out why this causes an error with makemkv
+            # TODO Find out why this causes an error with makemkv
             print('Application Path not Valid')
             # raise FileNotFoundError(f"Application path does not exist: {path}")
         self._application_path = path
@@ -100,13 +100,12 @@ class VideoRipApp(ABC):
             print(f"Directory created: {base_path}")
         return os.path.join(base_path, f"{name}{self.file_extension}")
     
-    def _extract_disc_title_info(self, iso_filename: str) -> List[TitleInfo]:
+    def extract_disc_title_info(self, iso_filename: str) -> List[TitleInfo]:
         raw_title_info = self._raw_title_info(iso_filename)
         title_info = self._parse_raw_title_info(raw_title_info)
         return title_info
 
-    def get_main_feature(self, iso_filename: str, expected_runtime: int, runtime_threshold: int=10, previous_title_ids: List[int]=[]) -> int:
-        title_data = self._extract_disc_title_info(iso_filename)
+    def get_main_feature(self, title_data: List[TitleInfo], expected_runtime: int, runtime_threshold: int=10, previous_title_ids: List[int]=[]) -> int:
         highest_runtime = -1
         backup_title_id = -1
         

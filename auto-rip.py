@@ -1,15 +1,22 @@
 import copy
 import os
 import threading
-import subprocess
 import ctypes
-import json
 from pathlib import Path
 from dotenv import load_dotenv
-from application import Handbrake
+from pydantic import BaseModel
+from application.Handbrake import Handbrake
 from application.MakeMKV import MakeMKV
+from application.VideoRipApp import VideoRipApp, TitleInfo
 from get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
 import re
+from typing import Dict, List
+
+# TODO Try and find a better name for this
+class RipApps(BaseModel):
+    app: VideoRipApp
+    title_info: List[TitleInfo]
+    name: str
 
 load_dotenv()
 
@@ -73,6 +80,7 @@ def write_to_file(file_path, content):
         print(f"Error writing to file {file_path}: {e}")
 
 def rip_dvd_title(iso_filename, mp4_output_folder, mkv_output_folder, title_ids, file_name):
+    # TODO Add the below sanitization into the VideoRipApp class
     # Sanitize the file name for Windows compatibility
     file_name = re.sub(r'[\\/:*?"<>|]', ' ', file_name)
     mp4_name = Path(mp4_output_folder) / f"{file_name}.mp4"
@@ -172,6 +180,11 @@ def main(output_folders, user_config):
     handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe")
     makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon")
 
+    video_rip_apps: List[RipApps] = [
+        RipApps(name="MakeMKV", app=makemkv, title_info=[]),
+        RipApps(name="Handbrake", app=handbrake, title_info=[])
+    ]
+
     media_info = {}
     iso_name = ''
 
@@ -237,7 +250,7 @@ def main(output_folders, user_config):
     if special_feature:
         iso_name = f"{dvd_title} Special Features"
 
-    # TODO See a better way, as this check is performed in 'makemkv.disc_backup'. The option could just be removed as everywhere else performs the check anywyas
+    # TODO See a better way, as this check is performed in 'makemkv.disc_backup'. The option could just be removed as everywhere else performs the check anyways
     iso_filename = Path(out_folders['iso']) / f"{iso_name}.iso"
 
     encode = 'n' # Default to not encoding, if the user does not want to encode, then it will not start the decryption
@@ -253,7 +266,30 @@ def main(output_folders, user_config):
         print('\nProcessing encoding, using existing ISO file.')
 
     if encode == 'y':
-        pass
+        for video_rip_app in video_rip_apps:
+            video_rip_app.title_info = video_rip_app.app.extract_disc_title_info(iso_filename)
+
+        for title in titles_to_rip:
+            runtime = title['expected_runtime']
+            # TODO Need to modify VideoRipApp to accept the filename for a title as it will not always match the iso filename. For example one iso file will have different episodes of a tv show which will have different names
+            file_name = title['file_name']
+            
+            active_threads = []
+            for video_rip_app in video_rip_apps:
+                title_to_rip = video_rip_app.get_main_feature(video_rip_app.title_info, runtime)
+                if title_to_rip >= 0:
+                    new_thread = threading.Thread(
+                        target=video_rip_app.extract_video,
+                        args=(iso_filename, title_to_rip, file_name)
+                    )
+                    new_thread.start()
+                    active_threads.append(new_thread)
+                else:
+                    print("Invalid title ID, skipping encoding")
+            
+            for active_thread in active_threads:
+                active_thread.join()
+
     else:
         print("\nEncoding skipped.")
 
