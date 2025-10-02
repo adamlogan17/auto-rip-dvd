@@ -2,6 +2,10 @@
 
 A python script to rip DVDs to ISO, MP4 and MKV file formats
 
+## MakeMKV
+
+A free registration key can be found [here](https://forum.makemkv.com/forum/viewtopic.php?t=1053).
+
 ## Docker
 
 If wishing to run the program using `docker compose` the 2 following commands must be used.

@@ -269,10 +269,13 @@ def main(output_folders, user_config):
         for video_rip_app in video_rip_apps:
             video_rip_app.title_info = video_rip_app.app.extract_disc_title_info(iso_filename)
 
+        print('-' * 20)
+        print(titles_to_rip)
+        print('-' * 20)
+
         for title in titles_to_rip:
             runtime = title['expected_runtime']
-            # TODO Need to modify VideoRipApp to accept the filename for a title as it will not always match the iso filename. For example one iso file will have different episodes of a tv show which will have different names
-            file_name = title['file_name']
+            filename = title['file_name']
             
             active_threads = []
             for video_rip_app in video_rip_apps:
@@ -280,7 +283,7 @@ def main(output_folders, user_config):
                 if title_to_rip >= 0:
                     new_thread = threading.Thread(
                         target=video_rip_app.extract_video,
-                        args=(iso_filename, title_to_rip, file_name)
+                        args=(iso_filename, title_to_rip, filename)
                     )
                     new_thread.start()
                     active_threads.append(new_thread)

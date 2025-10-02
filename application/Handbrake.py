@@ -2,16 +2,12 @@ import json
 import subprocess
 from VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
+from pathlib import Path
 
 class Handbrake(VideoRipApp):
-    def __init__(self, application_path: str):
-        super().__init__(application_path, '.mp4')
+    def __init__(self, application_path: Path, out_path: Path = "."):
+        super().__init__(application_path, '.mp4', out_path)
         pass
-    
-    def extract_disc_title_info(self, iso_filename: str) -> List[TitleInfo]:
-        raw_title_info = self._raw_title_info(iso_filename)
-        title_info = self._parse_raw_title_info(raw_title_info)
-        return title_info
 
     def _raw_title_info(self, iso_filename: str) -> dict:
         title_command = [
@@ -75,12 +71,12 @@ class Handbrake(VideoRipApp):
             print(f"Error: HandBrakeCLI failed with error code {e.returncode}.")
 
 if __name__ == "__main__":
-    app = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe")
+    app = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe", "F:\\test\\")
     print(app.application_path)
 
     disc_info = app.extract_disc_title_info("F:\\Movies\\21 Jump Street.iso")
     main_feature_title = app.get_main_feature(disc_info, 105)
     print(f"Main feature title ID: {main_feature_title}")
 
-    app.extract_video("F:\\Movies\\21 Jump Street.iso", main_feature_title, "F:\\test")
+    app.extract_video("F:\\Movies\\21 Jump Street.iso", main_feature_title, "21 Jump Street")
 

@@ -1,20 +1,32 @@
-import json
+from pathlib import Path
 import subprocess
-from VideoRipApp import VideoRipApp, TitleInfo, SeasonInformation
+from VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
 import os
 import re
 
 class MakeMKV(VideoRipApp):
-    def __init__(self, application_path: str):
-        super().__init__(application_path, '.mkv')
+    def __init__(self, application_path: str, mkv_out_path: str = ".", iso_out_path: str = "."):
+        super().__init__(application_path, '.mkv', mkv_out_path)
+        self.iso_out_path = iso_out_path
         pass
 
-    def disc_backup(self, output_path: str, disc_name: str) -> str:
+    @property
+    def iso_out_path(self) -> Path: return self._out_path
+    
+    @iso_out_path.setter
+    def iso_out_path(self, path: Path):
+        if not os.path.exists(path):
+            print(f"Path does not exist: {path}")
+            print(f"Creating directory: {path}")
+            os.makedirs(path)
+            print(f"Directory created: {path}")
+        self._iso_out_path = path
+
+    def disc_backup(self, disc_name: str) -> str:
         disc_number = 0
         
-        output = self._get_output_filename(output_path, disc_name)
-        output = f"{output[:-len(self.file_extension)]}.iso"
+        output = os.path.join(self.iso_out_path, f"{disc_name}.iso")
         
         if os.path.exists(output):
             print(f"Output file already exists, skipping extraction: {output}")
@@ -120,13 +132,13 @@ class MakeMKV(VideoRipApp):
             os.rename(new_file_path, mkv_name)
 
 if __name__ == "__main__":
-    app = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon")
+    app = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", "F:\\test", "F:\\test")
     print(app.application_path)
 
-    iso_file = app.disc_backup("F:\\test", "A Few Good Men")
+    iso_file = app.disc_backup("A Few Good Men")
     disc_info = app.extract_disc_title_info(iso_file)
     main_feature_title = app.get_main_feature(disc_info, 138)
     print(f"Main feature title ID: {main_feature_title}")
 
-    app.extract_video(iso_file, main_feature_title, "F:\\test")
+    app.extract_video(iso_file, main_feature_title, "A Few Good Men")
 
