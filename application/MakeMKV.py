@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-from VideoRipApp import VideoRipApp, TitleInfo
+from application.VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
 import os
 import re

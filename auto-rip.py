@@ -4,16 +4,16 @@ import threading
 import ctypes
 from pathlib import Path
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from application.Handbrake import Handbrake
 from application.MakeMKV import MakeMKV
 from application.VideoRipApp import VideoRipApp, TitleInfo
 from get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
-import re
-from typing import Dict, List
+from typing import List
 
 # TODO Try and find a better name for this
 class RipApps(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     app: VideoRipApp
     title_info: List[TitleInfo]
     name: str
@@ -38,39 +38,6 @@ def dvd_detected(drive_path):
     """
     return os.path.exists(drive_path) and os.path.isdir(drive_path) and os.listdir(drive_path) != []
 
-def special_feature_titles(makemkv_info, makemkv, special_features_info=[]):
-    """
-    Due to the unique structure of special feature discs, this function rips every title on the disc and put this into a different folder.
-    It can accept a dictionary, with the name and expected runtime of the special feature titles, to attempt to add some structure to the output.
-    """
-    all_titles = []
-    previous_title_ids = []
-    previous_title_episodes = [] # Used to prevent the same episode being used for multiple titles
-    title_data = makemkv._parse_raw_title_info(makemkv_info) # Only temporary until refactor of special feature functionailty
-    
-    for title in title_data:
-        title_id = title['title_id']
-        runtime = title['runtime']
-        filename = f"Title {title_id}"
-        
-        # Check if this title matches any special feature
-        for feature in special_features_info:
-            expected_runtime = feature['runtime']
-            runtime_threshold = 5  # Threshold in minutes
-            
-            if runtime >= (expected_runtime - runtime_threshold) and runtime <= (expected_runtime + runtime_threshold) and title_id not in previous_title_ids and feature['episode_number'] not in previous_title_episodes:
-                previous_title_episodes.append(feature['episode_number'])
-                filename = feature['episode_name']
-                break
-                
-        previous_title_ids.append(title_id)
-        all_titles.append({
-            'title_id': title_id,
-            'file_name': filename
-        })
-        
-    return all_titles
-
 def write_to_file(file_path, content):
     try:
         with open(file_path, 'w', encoding='utf-8') as file:
@@ -78,63 +45,6 @@ def write_to_file(file_path, content):
         print(f"Content written to {file_path}")
     except Exception as e:
         print(f"Error writing to file {file_path}: {e}")
-
-def rip_dvd_title(iso_filename, mp4_output_folder, mkv_output_folder, title_ids, file_name):
-    # TODO Add the below sanitization into the VideoRipApp class
-    # Sanitize the file name for Windows compatibility
-    file_name = re.sub(r'[\\/:*?"<>|]', ' ', file_name)
-    mp4_name = Path(mp4_output_folder) / f"{file_name}.mp4"
-    mkv_name = os.path.join(mkv_output_folder, f"{file_name}.mkv")
-    mkv_started = False
-    handbrake_started = False
-
-    current_files = os.listdir(mkv_output_folder)
-
-    mkv_thread = threading.Thread(
-        target=convert_to_mkv_makemkv,
-        args=(mkv_output_folder, title_ids['makemkv'], iso_filename)
-    )
-
-    handbrake_thread = threading.Thread(
-        target=convert_to_mp4_handbrake,
-        args=(iso_filename, mp4_name),
-        kwargs={'title_id': title_ids['handbrake']}
-    )
-
-    # Start both threads
-    if not os.path.exists(mkv_name):
-        mkv_thread.start()
-        mkv_started = True
-    else:
-        print(f"MKV file already exists: {mkv_name}")
-
-    if not os.path.exists(mp4_name):
-        handbrake_thread.start()
-        handbrake_started = True
-    else:
-        print(f"MP4 file already exists: {mp4_name}")
-
-    # Wait for both threads to complete
-    if mkv_started:
-        mkv_thread.join()
-    if handbrake_started:
-        handbrake_thread.join()
-
-    updated_files = os.listdir(mkv_output_folder)
-    new_file_name = list(set(updated_files) - set(current_files))
-    if new_file_name:
-        new_file_path = os.path.join(mkv_output_folder, new_file_name[0])
-        mkv_name = os.path.join(mkv_output_folder, f"{file_name}.mkv")
-        os.rename(new_file_path, mkv_name)
-
-    if mkv_started and os.path.exists(mkv_name):
-        print(f"MKV conversion completed: {mkv_name}")
-    if handbrake_started and os.path.exists(mp4_name):
-        print(f"MP4 conversion completed: {mp4_name}")
-    return {
-        'mkv': mkv_name,
-        'mp4': mp4_name
-    }
 
 def console_user_input():
     tv_show_info = None
@@ -177,13 +87,6 @@ def main(output_folders, user_config):
     dvd_title = user_config['dvd_title']
     special_feature = user_config['special_feature']
     tv_show_info = user_config['tv_show']
-    handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe")
-    makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon")
-
-    video_rip_apps: List[RipApps] = [
-        RipApps(name="MakeMKV", app=makemkv, title_info=[]),
-        RipApps(name="Handbrake", app=handbrake, title_info=[])
-    ]
 
     media_info = {}
     iso_name = ''
@@ -238,7 +141,7 @@ def main(output_folders, user_config):
             out_folders[key].mkdir(parents=True, exist_ok=True)
     else:
         out_folders['mkv'] = Path(out_folders['mkv']) / 'Movies'
-        media_info = tmdb_movie_info(dvd_title)
+        media_info = tmdb_movie_info(dvd_title, tmdb_api_key=os.getenv('TMDB_API_KEY'))
         iso_name = dvd_title
         titles_to_rip.append(
             {
@@ -253,10 +156,18 @@ def main(output_folders, user_config):
     # TODO See a better way, as this check is performed in 'makemkv.disc_backup'. The option could just be removed as everywhere else performs the check anyways
     iso_filename = Path(out_folders['iso']) / f"{iso_name}.iso"
 
+    handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe", out_folders['mp4'])
+    makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", out_folders['mkv'], out_folders['iso'])
+
+    video_rip_apps: List[RipApps] = [
+        RipApps(name="MakeMKV", app=makemkv, title_info=[]),
+        RipApps(name="Handbrake", app=handbrake, title_info=[])
+    ]
+
     encode = 'n' # Default to not encoding, if the user does not want to encode, then it will not start the decryption
     if not os.path.exists(iso_filename):
         encode = 'y'
-        iso_filename = makemkv.disc_backup(out_folders['iso'], iso_name)
+        iso_filename = makemkv.disc_backup(iso_name)
         print('-' * 20)
         print('ISO Completed')
         print('-' * 20)
@@ -279,10 +190,10 @@ def main(output_folders, user_config):
             
             active_threads = []
             for video_rip_app in video_rip_apps:
-                title_to_rip = video_rip_app.get_main_feature(video_rip_app.title_info, runtime)
+                title_to_rip = video_rip_app.app.get_main_feature(video_rip_app.title_info, runtime)
                 if title_to_rip >= 0:
                     new_thread = threading.Thread(
-                        target=video_rip_app.extract_video,
+                        target=video_rip_app.app.extract_video,
                         args=(iso_filename, title_to_rip, filename)
                     )
                     new_thread.start()
@@ -305,10 +216,7 @@ if __name__ == '__main__':
     iso_out_dir = os.getenv('ISO_OUT_DIR', 'C:\\iso_movies\\')
     mp4_out_dir = os.getenv('MP4_OUT_DIR', 'C:\\mp4_movies\\')
     mkv_out_dir = os.getenv('MKV_OUT_DIR', 'C:\\mkv_movies\\')
-    disc_drive = os.getenv('DISC_DRIVE', 'J:\\')
-
-    disc_drive = 'J:\\'
-    mp4_out_dir = 'I:\\'
+    disc_drive = os.getenv('DISC_DRIVE', 'E:\\')
 
     output_folders = {
         'mp4': mp4_out_dir,

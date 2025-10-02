@@ -1,12 +1,12 @@
 import json
 import subprocess
-from VideoRipApp import VideoRipApp, TitleInfo
+from application.VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
 from pathlib import Path
 
 class Handbrake(VideoRipApp):
-    def __init__(self, application_path: Path, out_path: Path = "."):
-        super().__init__(application_path, '.mp4', out_path)
+    def __init__(self, application_path: Path, mp4_out_path: Path = "."):
+        super().__init__(application_path, '.mp4', mp4_out_path)
         pass
 
     def _raw_title_info(self, iso_filename: str) -> dict:
