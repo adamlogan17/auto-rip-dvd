@@ -12,7 +12,7 @@ class MakeMKV(VideoRipApp):
         pass
 
     @property
-    def iso_out_path(self) -> Path: return self._out_path
+    def iso_out_path(self) -> Path: return self._iso_out_path
     
     @iso_out_path.setter
     def iso_out_path(self, path: Path):
