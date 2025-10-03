@@ -1,0 +1,29 @@
+services:
+  auto-ripping:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auto-ripping
+    environment:
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - ISO_OUT_DIR=/iso-output
+      - MP4_OUT_DIR=/mp4-output
+      - DISC_DRIVE=/disc-drive
+      - MKV_OUT_DIR=/mkv-output
+    volumes:
+      - type: bind
+        source: ""
+        target: /iso-output/
+      - type: bind
+        source: ""
+        target: /mp4-output/
+      - type: bind
+        source: ""
+        target: /disc-drive/
+      - type: bind
+        source: ""
+        target: /mkv-output/
+    stdin_open: true # docker run -i (just to keep the container running, so it can be exec into)
+    devices:
+      - "/dev/sr0:/dev/sr0"
+    privileged: true
