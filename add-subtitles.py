@@ -1,9 +1,10 @@
+import os
 import time
 import math
 import ffmpeg
 from faster_whisper import WhisperModel
 
-def format_input_video_name(input_video):
+def format_input_video_name(file_path):
     """Formats the input video name by replacing spaces with hyphens and converting to lowercase.
 
     Args:
@@ -12,7 +13,13 @@ def format_input_video_name(input_video):
     Returns:
         str: The formatted video name.
     """
-    return input_video.split('.')[0].replace(" ", "-").lower()
+    dir = file_path.split('/')
+    input_video = dir[-1]
+    file_path = '/'.join(dir[:-1])
+    return {
+        'file_path': file_path,
+        'video_name': input_video.split('.')[0].replace(" ", "-").lower()
+    }
 
 # NOTE: This requires 'brew install ffmpeg' so need to make a docker container for this script
 def extract_audio(input_video):
@@ -24,8 +31,8 @@ def extract_audio(input_video):
     Returns:
         str: The path to the extracted audio file.
     """
-    input_video_name = format_input_video_name(input_video)
-    extracted_audio = f"audio-{input_video_name}.wav"
+    formatted_path = format_input_video_name(input_video)
+    extracted_audio = f"{formatted_path['file_path']}/audio-{formatted_path['video_name']}.wav"
     stream = ffmpeg.input(input_video)
     stream = ffmpeg.output(stream, extracted_audio)
     ffmpeg.run(stream, overwrite_output=True)
@@ -79,8 +86,8 @@ def generate_subtitle_file(language, segments, input_video):
     Returns:
         str: The path to the generated subtitle file.
     """
-    input_video_name = format_input_video_name(input_video)
-    subtitle_file = f"sub-{input_video_name}.{language}.srt"
+    formatted_path = format_input_video_name(input_video[-1])
+    subtitle_file = f"{formatted_path['file_path']}/sub-{formatted_path['video_name']}.{language}.srt"
     text = ""
     for index, segment in enumerate(segments):
         segment_start = format_time(segment.start)
@@ -112,7 +119,7 @@ def add_subtitle_to_video(input_video, subtitle_file, soft_subtitle=True, overwr
     video_input_stream = ffmpeg.input(input_video)
     subtitle_input_stream = ffmpeg.input(subtitle_file)
     if overwrite_input:
-        output_video = f"output-{input_video_name}.mp4"
+        output_video = f"~/Movies/{input_video_name}.mp4"
     subtitle_track_title = subtitle_file.replace(".srt", "")
 
     # A 'soft subtitle' adds the subtitle as a separate track in the video file, which can be turned on or off by the user.
@@ -130,10 +137,20 @@ def add_subtitle_to_video(input_video, subtitle_file, soft_subtitle=True, overwr
         ffmpeg.run(stream, overwrite_output=True)
 
 if __name__ == "__main__":
-    input_file = ""
-    audio = extract_audio(input_file)
-    language, segments = transcribe(audio=audio)
-    subtitle_file = generate_subtitle_file(language, segments, input_file)
-    print(f"Subtitle file generated: {subtitle_file}")
-    add_subtitle_to_video(input_file, subtitle_file, soft_subtitle=True)
+    dir = '/Volumes/NO NAME'
+
+    for input_file in os.listdir(dir):
+        print(f"Processing file: {input_file}")
+        format = format_input_video_name(input_file)
+        audio = f"{format['file_path']}/audio-{format['video_name']}.wav"
+        sub = f"{format['file_path']}/sub-{format['video_name']}.en.srt"
+        if '.mp4' in input_file and 'john wick' not in input_file.lower():
+            input_file = os.path.join(dir, input_file)
+            if not os.path.exists(audio):
+                audio = extract_audio(input_file)
+            language, segments = transcribe(audio=audio)
+            if not os.path.exists(sub):
+                subtitle_file = generate_subtitle_file(language, segments, input_file)
+            print(f"Subtitle file generated: {subtitle_file}")
+            add_subtitle_to_video(input_file, subtitle_file, soft_subtitle=True)
 
