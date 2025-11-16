@@ -5,7 +5,7 @@ import ctypes
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
-from application.Handbrake import Handbrake
+from application.Handbrake import Handbrake, VideoQuality
 from application.MakeMKV import MakeMKV
 from application.VideoRipApp import VideoRipApp, TitleInfo
 from get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
@@ -72,21 +72,45 @@ def console_user_input():
             'num_episodes': num_episodes
         }
 
+    print()
+    print('Please select the desired MP4 quality:')
+    print('1. HD (Fast 1080p30)')
+    print('2. SD (Fast 720p30)')
+    print('3. Android HD (Android 1080p30)')
+    print('4. Android SD (Android 720p30)')
+    print('5. Apple HD (Apple 1080p30)')
+    print('6. Apple SD (Apple 720p30)')
+    print('')
+    print('This is an upper limit of quality and does not upscale the video.')
+    quality_choice = str(input('Enter the number corresponding to your choice (default is 1): ')).strip()
+    quality_mapping = {
+        '1': VideoQuality.HD,
+        '2': VideoQuality.SD,
+        '3': VideoQuality.ANDROID_HD,
+        '4': VideoQuality.ANDROID_SD,
+        '5': VideoQuality.APPLE_HD,
+        '6': VideoQuality.APPLE_SD
+    }
+    mp4_quality = quality_mapping.get(quality_choice, quality_mapping['1'])
+
     return {
         'dvd_title': dvd_title,
         'tv_show': tv_show_info,
-        'special_feature': special_feature
+        'special_feature': special_feature,
+        'mp4_quality': mp4_quality
     }
 
 # NOTE: Need to split this function up, as it is too large
 # NOTE: Add a check to see if the rip was successful and if so call store_media_info
 def main(output_folders, user_config):
+    print(user_config)
     # This is modified, if there is a tv show and therefore needs to be copied to ensure that thr argument is not modified
     out_folders = copy.deepcopy(output_folders)
     titles_to_rip = [] # NOTE: rename this variable, as it no longer holds the title id
     dvd_title = user_config['dvd_title']
     special_feature = user_config['special_feature']
     tv_show_info = user_config['tv_show']
+    mp4_quality = user_config['mp4_quality']
 
     media_info = {}
     iso_name = ''
@@ -156,8 +180,8 @@ def main(output_folders, user_config):
     # TODO See a better way, as this check is performed in 'makemkv.disc_backup'. The option could just be removed as everywhere else performs the check anyways
     iso_filename = Path(out_folders['iso']) / f"{iso_name}.iso"
 
-    handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe", out_folders['mp4'])
-    makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", out_folders['mkv'], out_folders['iso'])
+    handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe", quality=mp4_quality, mp4_out_path=out_folders['mp4'])
+    makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", mkv_out_path=out_folders['mkv'], iso_out_path=out_folders['iso'])
 
     video_rip_apps: List[RipApps] = [
         RipApps(name="MakeMKV", app=makemkv, title_info=[]),
@@ -227,5 +251,5 @@ if __name__ == '__main__':
     user_input = console_user_input()
 
     while True:
-        if dvd_detected(disc_drive):
+        if True:
             main(output_folders, user_input)
