@@ -61,6 +61,7 @@ def tmdb_tv_info(tv_name, tmdb_api_key=os.getenv('TMDB_API_KEY', None)):
         if query_response.status_code == 200:
             data = query_response.json()
             if data['results']:
+                tv_info = None
                 query_result = data['results'][0]  # Return the first result
                 tmdb_id = query_result['id']
                 tv_url = f"{base_url}/tv/{tmdb_id}?api_key={tmdb_api_key}&append_to_response=credits"
