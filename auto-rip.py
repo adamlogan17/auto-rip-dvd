@@ -251,5 +251,5 @@ if __name__ == '__main__':
     user_input = console_user_input()
 
     while True:
-        if True:
+        if dvd_detected(disc_drive):
             main(output_folders, user_input)
