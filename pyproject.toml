@@ -1,0 +1,21 @@
+[project]
+name = "auto-rip-dvd"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Adam Logan", email = "adamlogan42@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.12.4",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+]
+
+[project.scripts]
+auto-rip-dvd = "auto_rip_dvd:main"
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
