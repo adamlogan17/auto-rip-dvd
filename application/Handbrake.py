@@ -3,9 +3,22 @@ import subprocess
 from application.VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
 from pathlib import Path
+from enum import Enum
+
+class VideoQuality(Enum):
+    '''
+    The preset does not upscale, this is an upper limit of quality
+    '''
+    HD = 'Fast 1080p30'
+    SD = 'Fast 720p30'
+    ANDROID_HD = 'Android 1080p30'
+    ANDROID_SD = 'Android 720p30'
+    APPLE_HD = 'Apple 1080p30'
+    APPLE_SD = 'Apple 720p30'
 
 class Handbrake(VideoRipApp):
-    def __init__(self, application_path: Path, mp4_out_path: Path = "."):
+    def __init__(self, application_path: Path, quality: VideoQuality = VideoQuality.HD, mp4_out_path: Path = "."):
+        self.quality = quality
         super().__init__(application_path, '.mp4', mp4_out_path)
         pass
 
@@ -41,20 +54,18 @@ class Handbrake(VideoRipApp):
     
     def _extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
         """
-        Automatically starts HandBrake encoding with the preset 'Fast 1080p30'.
+        Automatically starts HandBrake encoding.
 
         :param input_file: Path to the input video file.
         :param output_file: Path to the output encoded video file.
         """
 
-        # HandBrakeCLI command with the 'Fast 1080p30' preset
-        # The preset does not upscale, this is an upper limit of quality
         command = [
             self.application_path,
             "-i", iso_filename,
             "-o", output_path,
             # "-f", f"av_{file_format}",
-            "--preset", "Fast 1080p30"
+            "--preset", self.quality.value
         ]
 
         if title_id:
