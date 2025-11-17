@@ -53,7 +53,7 @@ class MakeMKV(VideoRipApp):
             print(f"Error: MakeMKV failed with error code {e.returncode}.")
             return None
 
-    def _raw_title_info(self, iso_filename: str) -> dict:
+    def _raw_title_info(self, iso_filename: Path) -> str | None:
         info_command = [
             self.application_path,
             'info',
@@ -68,11 +68,13 @@ class MakeMKV(VideoRipApp):
             return disc_info.stdout
         except FileNotFoundError:
             print("Error: MakeMKV not found. Please check the path to MakeMKV.")
+            return None
         except subprocess.CalledProcessError as e:
             print(f"Error: MakeMKV failed with error code {e.returncode}.")
+            return None
 
-    def _parse_raw_title_info(self, raw_title_info: List) -> List[TitleInfo]:
-        title_data = []
+    def _parse_raw_title_info(self, raw_title_info: str) -> List[TitleInfo]:
+        title_data: List[TitleInfo] = []
         
         for line in raw_title_info.splitlines():
             processed_line = line.split(',')
@@ -101,7 +103,7 @@ class MakeMKV(VideoRipApp):
                     title_data.append(TitleInfo(title_id=title_id, runtime=runtime))
         return title_data
             
-    def _extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
+    def _extract_video_file(self, iso_filename: Path, title_id: int, output_path: Path) -> Path | None:
         output = os.path.dirname(output_path)
         current_files = os.listdir(output)
         file_name = os.path.basename(output_path)
@@ -121,8 +123,10 @@ class MakeMKV(VideoRipApp):
             print(f"Decryption completed. Output saved to {output}.")
         except FileNotFoundError:
             print("Error: MakeMKV not found. Please check the path to MakeMKV.")
+            return None
         except subprocess.CalledProcessError as e:
             print(f"Error: MakeMKV failed with error code {e.returncode}.")
+            return None
 
         updated_files = os.listdir(output)
         new_file_name = list(set(updated_files) - set(current_files))
@@ -132,13 +136,14 @@ class MakeMKV(VideoRipApp):
             os.rename(new_file_path, mkv_name)
 
 if __name__ == "__main__":
-    app = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", "F:\\test", "F:\\test")
+    app = MakeMKV(Path("C:\\Program Files (x86)\\MakeMKV\\makemkvcon"), Path("F:\\test"), Path("F:\\test"))
     print(app.application_path)
 
     iso_file = app.disc_backup("A Few Good Men")
-    disc_info = app.extract_disc_title_info(iso_file)
-    main_feature_title = app.get_main_feature(disc_info, 138)
-    print(f"Main feature title ID: {main_feature_title}")
+    if iso_file is not None:        
+        disc_info = app.extract_disc_title_info(iso_file)
+        main_feature_title = app.get_main_feature(disc_info, 138)
+        print(f"Main feature title ID: {main_feature_title}")
 
-    app.extract_video(iso_file, main_feature_title, "A Few Good Men")
+        app.extract_video(iso_file, main_feature_title, "A Few Good Men")
 
