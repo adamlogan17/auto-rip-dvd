@@ -1,7 +1,7 @@
 [project]
 name = "auto-rip-dvd"
 version = "0.1.0"
-description = "Add your description here"
+description = "A package which allows for ripping of DVDs and Blu-rays"
 readme = "README.md"
 authors = [
     { name = "Adam Logan", email = "adamlogan42@gmail.com" }
