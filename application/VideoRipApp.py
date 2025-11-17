@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Any
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -8,9 +8,15 @@ class TitleInfo(BaseModel):
     title_id: int
     runtime: int
 
-class SeasonInformation(BaseModel):
+class SpecialFeature(BaseModel):
     runtime: int
     info: str = ""
+    episode_name: str = ""
+    episode_number: int
+
+class SpecialFeatureTitles(BaseModel):
+    title_id: int
+    file_name: str
 
 class VideoRipApp(ABC):
     def __init__(self, application_path: Path, file_extension: str, out_path: Path):
@@ -50,51 +56,51 @@ class VideoRipApp(ABC):
             print(f"Directory created: {path}")
         self._out_path = path
 
-    @property
+    @property # pyright: ignore[reportGeneralTypeIssues, reportArgumentType]
     @staticmethod
     def special_feature_runtime_threshold() -> int: return 5
     
     @abstractmethod
-    def _extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
+    def _extract_video_file(self, iso_filename: Path, title_id: int, output_path: str) -> str:
         return ''
 
     @staticmethod
     @abstractmethod
-    def _raw_title_info(self, iso_filename: str) -> dict: return {}
+    def _raw_title_info(iso_filename: Path) -> Any: return {}
 
     @staticmethod
     @abstractmethod
-    def _parse_raw_title_info(self, raw_title_info: List) -> List[TitleInfo]: return []
+    def _parse_raw_title_info(raw_title_info: Any) -> List[TitleInfo]: return []
 
-    def special_feature_titles(self, title_data: List[TitleInfo], special_features_info: List[SeasonInformation]) -> List[int]:
-        all_titles = []
-        previous_title_ids = []
-        previous_title_episodes = [] # Used to prevent the same episode being used for multiple titles
+    def special_feature_titles(self, title_data: List[TitleInfo], special_features_info: List[SpecialFeature]) -> List[SpecialFeatureTitles]:
+        all_titles: List[SpecialFeatureTitles] = []
+        previous_title_ids: List[int] = []
+        previous_title_episodes: List[int] = [] # Used to prevent the same episode being used for multiple titles
 
         for title in title_data:
-            title_id = title['title_id']
-            runtime = title['runtime']
+            title_id = title.title_id
+            runtime = title.runtime
             filename = f"Title {title_id}"
             
             # Check if this title matches any special feature
             for feature in special_features_info:
-                expected_runtime = feature['runtime']
-                runtime_threshold = self.special_feature_runtime_threshold()
+                expected_runtime = feature.runtime
+                runtime_threshold = self.special_feature_runtime_threshold
                 
-                if runtime >= (expected_runtime - runtime_threshold) and runtime <= (expected_runtime + runtime_threshold) and title_id not in previous_title_ids and feature['episode_number'] not in previous_title_episodes:
-                    previous_title_episodes.append(feature['episode_number'])
-                    filename = feature['episode_name']
+                if runtime >= (expected_runtime - runtime_threshold) and runtime <= (expected_runtime + runtime_threshold) and title_id not in previous_title_ids and feature.episode_number not in previous_title_episodes:
+                    previous_title_episodes.append(feature.episode_number)
+                    filename = feature.episode_name
                     break
 
             previous_title_ids.append(title_id)
-            all_titles.append({
-                'title_id': title_id,
-                'file_name': filename
-            })
+            all_titles.append(SpecialFeatureTitles(
+                title_id=title_id,
+                file_name=filename
+            ))
             
         return all_titles
     
-    def extract_video(self, iso_filename: str, title_id: int, file_name: str) -> str:
+    def extract_video(self, iso_filename: Path, title_id: int, file_name: str) -> str:
         if not os.path.exists(iso_filename):
             raise FileNotFoundError(f"ISO file does not exist: {iso_filename}")
 
