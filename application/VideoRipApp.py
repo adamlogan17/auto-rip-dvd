@@ -61,16 +61,14 @@ class VideoRipApp(ABC):
     def special_feature_runtime_threshold() -> int: return 5
     
     @abstractmethod
-    def _extract_video_file(self, iso_filename: Path, title_id: int, output_path: str) -> str:
-        return ''
+    def _extract_video_file(self, iso_filename: Path, title_id: int, output_path: Path) -> Path | None:
+        return None
 
-    @staticmethod
     @abstractmethod
-    def _raw_title_info(iso_filename: Path) -> Any: return {}
+    def _raw_title_info(self, iso_filename: Path) -> Any: return {}
 
-    @staticmethod
     @abstractmethod
-    def _parse_raw_title_info(raw_title_info: Any) -> List[TitleInfo]: return []
+    def _parse_raw_title_info(self, raw_title_info: Any) -> List[TitleInfo]: return []
 
     def special_feature_titles(self, title_data: List[TitleInfo], special_features_info: List[SpecialFeature]) -> List[SpecialFeatureTitles]:
         all_titles: List[SpecialFeatureTitles] = []
@@ -100,11 +98,11 @@ class VideoRipApp(ABC):
             
         return all_titles
     
-    def extract_video(self, iso_filename: Path, title_id: int, file_name: str) -> str:
+    def extract_video(self, iso_filename: Path, title_id: int, file_name: str) -> Path | None:
         if not os.path.exists(iso_filename):
             raise FileNotFoundError(f"ISO file does not exist: {iso_filename}")
 
-        output_filename = os.path.join(self.out_path, f"{file_name}{self.file_extension}")
+        output_filename = Path(self.out_path / f"{file_name}{self.file_extension}")
         if os.path.exists(output_filename):
             print(f"Output file already exists, skipping extraction: {output_filename}")
             return output_filename
