@@ -116,7 +116,7 @@ def main(output_folders, user_config):
             # Get the runtime and episode name for each episode on the disc
             for episode_number in range(first_episode, first_episode + num_episodes):
                 # Need to subtract 1 to episode_number as the list is 0-indexed
-                episode_info = media_info['seasons'][season_number-1]['episodes'][episode_number-1]
+                episode_info = media_info['seasons'][season_number-1]['episodes'][episode_number-1] if media_info is not None else {'runtime': -1, 'name': f'Episode {episode_number-1}'}
                 formatted_episode = f"{episode_number:02d}"
                 titles_to_rip.append(
                     {
@@ -146,7 +146,7 @@ def main(output_folders, user_config):
         titles_to_rip.append(
             {
                 'file_name': dvd_title,
-                'expected_runtime': media_info['runtime']
+                'expected_runtime': media_info['runtime'] if media_info is not None else -1
             }
         )
 
