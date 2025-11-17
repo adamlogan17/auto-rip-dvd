@@ -23,10 +23,10 @@ class MakeMKV(VideoRipApp):
             print(f"Directory created: {path}")
         self._iso_out_path = path
 
-    def disc_backup(self, disc_name: str) -> str:
+    def disc_backup(self, disc_name: str) -> Path | None:
         disc_number = 0
         
-        output = os.path.join(self.iso_out_path, f"{disc_name}.iso")
+        output = Path(self.iso_out_path / f"{disc_name}.iso")
         
         if os.path.exists(output):
             print(f"Output file already exists, skipping extraction: {output}")

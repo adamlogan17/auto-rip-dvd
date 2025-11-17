@@ -104,7 +104,7 @@ class VideoRipApp(ABC):
             return output_filename
         return self._extract_video_file(iso_filename, title_id, output_filename)
 
-    def extract_disc_title_info(self, iso_filename: str) -> List[TitleInfo]:
+    def extract_disc_title_info(self, iso_filename: Path) -> List[TitleInfo]:
         raw_title_info = self._raw_title_info(iso_filename)
         title_info = self._parse_raw_title_info(raw_title_info)
         return title_info

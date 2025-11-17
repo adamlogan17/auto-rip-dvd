@@ -168,6 +168,9 @@ def main(output_folders, user_config):
     if not os.path.exists(iso_filename):
         encode = 'y'
         iso_filename = makemkv.disc_backup(iso_name)
+        if iso_filename is None:
+            print("Failed to create ISO image, aborting process.")
+            return
         print('-' * 20)
         print('ISO Completed')
         print('-' * 20)
