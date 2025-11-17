@@ -23,4 +23,5 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pylint>=4.0.3",
+    "pyright>=1.1.407",
 ]
