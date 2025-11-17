@@ -25,7 +25,7 @@ load_dotenv()
 def eject_dvd():
     print('Ejecting DVD!')
     try:
-        ctypes.windll.WINMM.mciSendStringW(u"set cdaudio door open",None,0,None)
+        ctypes.windll.WINMM.mciSendStringW(u"set cdaudio door open",None,0,None) # pyright: ignore[reportAttributeAccessIssue] - states that 'ctypes' has no attribute 'windll', but it does 
     except:
         os.system("eject cdrom")
 
@@ -156,8 +156,8 @@ def main(output_folders, user_config):
     # TODO See a better way, as this check is performed in 'makemkv.disc_backup'. The option could just be removed as everywhere else performs the check anyways
     iso_filename = Path(out_folders['iso']) / f"{iso_name}.iso"
 
-    handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe", out_folders['mp4'])
-    makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", out_folders['mkv'], out_folders['iso'])
+    handbrake = Handbrake(Path("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe"), out_folders['mp4'])
+    makemkv = MakeMKV(Path("C:\\Program Files (x86)\\MakeMKV\\makemkvcon"), out_folders['mkv'], out_folders['iso'])
 
     video_rip_apps: List[RipApps] = [
         RipApps(name="MakeMKV", app=makemkv, title_info=[]),

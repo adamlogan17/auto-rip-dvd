@@ -6,7 +6,7 @@ import os
 import re
 
 class MakeMKV(VideoRipApp):
-    def __init__(self, application_path: str, mkv_out_path: str = ".", iso_out_path: str = "."):
+    def __init__(self, application_path: Path, mkv_out_path: Path = Path("."), iso_out_path: Path = Path(".")):
         super().__init__(application_path, '.mkv', mkv_out_path)
         self.iso_out_path = iso_out_path
         pass
