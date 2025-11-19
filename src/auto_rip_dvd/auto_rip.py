@@ -214,7 +214,6 @@ def main(output_folders, user_config):
         store_media_info(media_info)
         eject_dvd()
 
-
 if __name__ == '__main__':
     iso_out_dir = os.getenv('ISO_OUT_DIR', 'C:\\iso_movies\\')
     mp4_out_dir = os.getenv('MP4_OUT_DIR', 'C:\\mp4_movies\\')
