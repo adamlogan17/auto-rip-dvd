@@ -140,7 +140,7 @@ if __name__ == "__main__":
     print(app.application_path)
 
     iso_file = app.disc_backup("A Few Good Men")
-    if iso_file is not None:        
+    if iso_file is not None:
         disc_info = app.extract_disc_title_info(iso_file)
         main_feature_title = app.get_main_feature(disc_info, 138)
         print(f"Main feature title ID: {main_feature_title}")
