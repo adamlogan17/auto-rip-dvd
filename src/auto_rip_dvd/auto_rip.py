@@ -5,10 +5,10 @@ import ctypes
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
-from application.Handbrake import Handbrake
-from application.MakeMKV import MakeMKV
-from application.VideoRipApp import VideoRipApp, TitleInfo
-from get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
+from auto_rip_dvd.application.Handbrake import Handbrake
+from auto_rip_dvd.application.MakeMKV import MakeMKV
+from auto_rip_dvd.application.VideoRipApp import VideoRipApp, TitleInfo
+from auto_rip_dvd.get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
 from typing import List
 
 # TODO Try and find a better name for this
@@ -80,7 +80,7 @@ def console_user_input():
 
 # NOTE: Need to split this function up, as it is too large
 # NOTE: Add a check to see if the rip was successful and if so call store_media_info
-def main(output_folders, user_config):
+def dvd_rip_workflow(output_folders, user_config):
     # This is modified, if there is a tv show and therefore needs to be copied to ensure that thr argument is not modified
     out_folders = copy.deepcopy(output_folders)
     titles_to_rip = [] # NOTE: rename this variable, as it no longer holds the title id
@@ -213,21 +213,3 @@ def main(output_folders, user_config):
     if os.getenv('NO_EJECT') != True:
         store_media_info(media_info)
         eject_dvd()
-
-if __name__ == '__main__':
-    iso_out_dir = os.getenv('ISO_OUT_DIR', 'C:\\iso_movies\\')
-    mp4_out_dir = os.getenv('MP4_OUT_DIR', 'C:\\mp4_movies\\')
-    mkv_out_dir = os.getenv('MKV_OUT_DIR', 'C:\\mkv_movies\\')
-    disc_drive = os.getenv('DISC_DRIVE', 'E:\\')
-
-    output_folders = {
-        'mp4': mp4_out_dir,
-        'mkv': mkv_out_dir,
-        'iso': iso_out_dir
-    }
-
-    user_input = console_user_input()
-
-    while True:
-        if dvd_detected(disc_drive):
-            main(output_folders, user_input)
