@@ -1,7 +1,7 @@
 import json
 import subprocess
 from pydantic import BaseModel
-from application.VideoRipApp import VideoRipApp, TitleInfo
+from auto_rip_dvd.application.VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
 from pathlib import Path
 
