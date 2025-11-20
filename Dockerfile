@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     && apt-get clean
 
-RUN pip3 install --break-system-packages pipenv
+RUN pip3 install --break-system-packages uv
 
 RUN add-apt-repository -y ppa:stebbins/handbrake-releases || true
 RUN apt-get update
@@ -26,13 +26,14 @@ ENV MAKEMKV=/usr/bin/makemkvcon
 
 ENV PATH="/usr/bin:${PATH}"
 
-COPY get_media_info.py /code/get_media_info.py
-COPY auto-rip.py /code/auto-rip.py
-COPY Pipfile /code/Pipfile
-COPY Pipfile.lock /code/Pipfile.lock
+COPY src /code/src
+COPY pyproject.toml /code/pyproject.toml
+COPY uv.lock /code/uv.lock
+COPY README.md /code/README.md
 
-# should use pipenv sync instead (might encounter the env issue)
-RUN pipenv requirements > requirements.txt
-RUN pip3 install --break-system-packages -r requirements.txt
 
-ENTRYPOINT [ "python3", "auto-rip.py" ]
+# 'uv run --frozen' installs dependencies from uv.lock, without updating them
+ENTRYPOINT [ "uv", "run", "--frozen", "auto-rip-dvd" ]
+
+# Below is to keep the container running for debugging purposes, the above line should be commented out when using this
+# CMD ["/bin/bash"]
