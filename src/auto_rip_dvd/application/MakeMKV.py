@@ -62,7 +62,7 @@ class MakeMKV(VideoRipApp):
         ]
 
         try:
-            print(f"Starting retrieving disc information using MakeMKV...")
+            print("Starting retrieving disc information using MakeMKV...")
             disc_info = subprocess.run(info_command, check=True, text=True, capture_output=True)
             print(f"Decryption completed. Output saved to {'output_file'}.")
             return disc_info.stdout
@@ -118,7 +118,7 @@ class MakeMKV(VideoRipApp):
         ]
         
         try:
-            print(f"Starting MakeMKV decryption for disc:0...")
+            print("Starting MakeMKV decryption for disc:0...")
             subprocess.run(mkv_command, check=True)
             print(f"Decryption completed. Output saved to {output}.")
         except FileNotFoundError:

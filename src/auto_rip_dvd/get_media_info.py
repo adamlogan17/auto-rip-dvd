@@ -36,8 +36,7 @@ def get_director(crew):
                 'tmdb_id': crew_member['id'],
                 'profile_path': f"https://image.tmdb.org/t/p/w500{crew_member['profile_path']}" if crew_member['profile_path'] else None,
                 'gender': crew_member['gender'],
-                'tmdb_credit_id': crew_member['credit_id'],
-                'tmdb_id': crew_member['id']
+                'tmdb_credit_id': crew_member['credit_id']
             }
     return None
 

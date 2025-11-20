@@ -62,8 +62,8 @@ def console_user_input():
         num_episodes = 0
 
         if special_feature_input != 'y':
-            season_number = int(input(f'Enter the season number for this disc: ').strip())
-            first_episode = int(input(f'Enter the first episode number: ').strip())
+            season_number = int(input('Enter the season number for this disc: ').strip())
+            first_episode = int(input('Enter the first episode number: ').strip())
             num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
 
         tv_show_info = {
@@ -210,6 +210,6 @@ def dvd_rip_workflow(output_folders, user_config):
     else:
         print("\nEncoding skipped.")
 
-    if os.getenv('NO_EJECT') != True:
+    if not os.getenv('NO_EJECT'):
         store_media_info(media_info)
         eject_dvd()

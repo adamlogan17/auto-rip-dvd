@@ -31,9 +31,9 @@ class Handbrake(VideoRipApp):
         ]
 
         try:
-            print(f"Starting retrieving disc information using HandBrakeCLI...")
+            print("Starting retrieving disc information using HandBrakeCLI...")
             disc_info = subprocess.run(title_command, check=True, text=True, capture_output=True)
-            print(f"Information retrieval completed.")
+            print("Information retrieval completed.")
             raw_output = disc_info.stdout
             raw_title_info = raw_output.split('JSON Title Set:')[1].strip()
             return json.loads(raw_title_info)
