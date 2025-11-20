@@ -12,16 +12,16 @@ services:
       - MKV_OUT_DIR=/mkv-output
     volumes:
       - type: bind
-        source: ""
+        source: "~/auto-rip/iso/"
         target: /iso-output/
       - type: bind
-        source: ""
+        source: "~/auto-rip/mp4/"
         target: /mp4-output/
       - type: bind
         source: ""
         target: /disc-drive/
       - type: bind
-        source: ""
+        source: "~/auto-rip/mkv/"
         target: /mkv-output/
     stdin_open: true # docker run -i (just to keep the container running, so it can be exec into)
     devices:
