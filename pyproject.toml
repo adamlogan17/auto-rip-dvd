@@ -1,0 +1,41 @@
+[project]
+name = "auto-rip-dvd"
+version = "0.1.0"
+description = "A package which allows for ripping of DVDs and Blu-rays"
+readme = "README.md"
+authors = [
+    { name = "Adam Logan", email = "adamlogan42@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.12.4",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+]
+
+[project.scripts]
+auto-rip-dvd = "auto_rip_dvd:main"
+
+[tool.pyright]
+include = ["tests", "src/auto_rip_dvd"]
+exclude = ["build", "dist"]
+typeCheckingMode = "standard"
+reportMissingImports = true
+reportUnusedVariable = true
+reportUnusedImport = true
+
+[tool.ruff.lint]
+# List of rules can be found here 'https://docs.astral.sh/ruff/rules/'
+ignore = [
+    'E722' # 'Do not use bare `except`'
+]
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.407",
+    "ruff>=0.14.5",
+]

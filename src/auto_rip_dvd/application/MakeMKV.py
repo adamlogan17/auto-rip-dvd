@@ -1,12 +1,12 @@
 from pathlib import Path
 import subprocess
-from application.VideoRipApp import VideoRipApp, TitleInfo
+from auto_rip_dvd.application.VideoRipApp import VideoRipApp, TitleInfo
 from typing import List
 import os
 import re
 
 class MakeMKV(VideoRipApp):
-    def __init__(self, application_path: str, mkv_out_path: str = ".", iso_out_path: str = "."):
+    def __init__(self, application_path: Path, mkv_out_path: Path = Path("."), iso_out_path: Path = Path(".")):
         super().__init__(application_path, '.mkv', mkv_out_path)
         self.iso_out_path = iso_out_path
         pass
@@ -23,10 +23,10 @@ class MakeMKV(VideoRipApp):
             print(f"Directory created: {path}")
         self._iso_out_path = path
 
-    def disc_backup(self, disc_name: str) -> str:
+    def disc_backup(self, disc_name: str) -> Path | None:
         disc_number = 0
         
-        output = os.path.join(self.iso_out_path, f"{disc_name}.iso")
+        output = Path(self.iso_out_path / f"{disc_name}.iso")
         
         if os.path.exists(output):
             print(f"Output file already exists, skipping extraction: {output}")
@@ -53,7 +53,7 @@ class MakeMKV(VideoRipApp):
             print(f"Error: MakeMKV failed with error code {e.returncode}.")
             return None
 
-    def _raw_title_info(self, iso_filename: str) -> dict:
+    def _raw_title_info(self, iso_filename: Path) -> str | None:
         info_command = [
             self.application_path,
             'info',
@@ -62,17 +62,19 @@ class MakeMKV(VideoRipApp):
         ]
 
         try:
-            print(f"Starting retrieving disc information using MakeMKV...")
+            print("Starting retrieving disc information using MakeMKV...")
             disc_info = subprocess.run(info_command, check=True, text=True, capture_output=True)
             print(f"Decryption completed. Output saved to {'output_file'}.")
             return disc_info.stdout
         except FileNotFoundError:
             print("Error: MakeMKV not found. Please check the path to MakeMKV.")
+            return None
         except subprocess.CalledProcessError as e:
             print(f"Error: MakeMKV failed with error code {e.returncode}.")
+            return None
 
-    def _parse_raw_title_info(self, raw_title_info: List) -> List[TitleInfo]:
-        title_data = []
+    def _parse_raw_title_info(self, raw_title_info: str) -> List[TitleInfo]:
+        title_data: List[TitleInfo] = []
         
         for line in raw_title_info.splitlines():
             processed_line = line.split(',')
@@ -101,7 +103,7 @@ class MakeMKV(VideoRipApp):
                     title_data.append(TitleInfo(title_id=title_id, runtime=runtime))
         return title_data
             
-    def _extract_video_file(self, iso_filename: str, title_id: int, output_path: str) -> str:
+    def _extract_video_file(self, iso_filename: Path, title_id: int, output_path: Path) -> Path | None:
         output = os.path.dirname(output_path)
         current_files = os.listdir(output)
         file_name = os.path.basename(output_path)
@@ -116,13 +118,15 @@ class MakeMKV(VideoRipApp):
         ]
         
         try:
-            print(f"Starting MakeMKV decryption for disc:0...")
+            print("Starting MakeMKV decryption for disc:0...")
             subprocess.run(mkv_command, check=True)
             print(f"Decryption completed. Output saved to {output}.")
         except FileNotFoundError:
             print("Error: MakeMKV not found. Please check the path to MakeMKV.")
+            return None
         except subprocess.CalledProcessError as e:
             print(f"Error: MakeMKV failed with error code {e.returncode}.")
+            return None
 
         updated_files = os.listdir(output)
         new_file_name = list(set(updated_files) - set(current_files))
@@ -132,13 +136,14 @@ class MakeMKV(VideoRipApp):
             os.rename(new_file_path, mkv_name)
 
 if __name__ == "__main__":
-    app = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", "F:\\test", "F:\\test")
+    app = MakeMKV(Path("C:\\Program Files (x86)\\MakeMKV\\makemkvcon"), Path("F:\\test"), Path("F:\\test"))
     print(app.application_path)
 
     iso_file = app.disc_backup("A Few Good Men")
-    disc_info = app.extract_disc_title_info(iso_file)
-    main_feature_title = app.get_main_feature(disc_info, 138)
-    print(f"Main feature title ID: {main_feature_title}")
+    if iso_file is not None:
+        disc_info = app.extract_disc_title_info(iso_file)
+        main_feature_title = app.get_main_feature(disc_info, 138)
+        print(f"Main feature title ID: {main_feature_title}")
 
-    app.extract_video(iso_file, main_feature_title, "A Few Good Men")
+        app.extract_video(iso_file, main_feature_title, "A Few Good Men")
 

@@ -2,6 +2,28 @@
 
 A python script to rip DVDs to ISO, MP4 and MKV file formats
 
+## UV
+
+It was chosen to use the [uv](https://docs.astral.sh/uv/) Python package manager for this project.
+
+For the `uv` script to work, the package code must be within a `src` folder and the function that the script is to execute must be within `__init__.py`. The `uv` docs surrounding packaged applications can be found [here](https://docs.astral.sh/uv/concepts/projects/init/#packaged-applications).
+
+Dev dependencies can be installed by `uv sync --frozen --dev`.
+
+`uv run auto-rip-dvd` can be used to run the application.
+
+### Ruff
+
+[ruff](https://docs.astral.sh/ruff/) is the chosen linter for this project. It is built by astral, the same compony who manages `uv`. If using VS code, it is recommended to install the [ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) extension.
+
+To run a check use the `uv run ruff check` command, and to automatically fix the errors add the `--fix` argument.
+
+A list of it's rules can be found [here](https://docs.astral.sh/ruff/rules/).
+
+### Pyright
+
+`pyright` is the chosen type checker for this project. If using VS code, it is recommended to install the [pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance) extension.
+
 ## MakeMKV
 
 A free registration key can be found [here](https://forum.makemkv.com/forum/viewtopic.php?t=1053).
@@ -68,4 +90,5 @@ How movies and TV shows are named are based of the advice given from Jellyfin an
 - Jellyfin in docker-compose
 - Add .plexmatch file [here](https://support.plex.tv/articles/plexmatch/)
 - Disable auto update check [forum](https://forum.makemkv.com/forum/viewtopic.php?t=8397)
-- Refactor the `auto-rip.py` script (especially the `main`) function
+- Refactor the `auto-rip.py` script (especially the `dvd_rip_workflow`) function
+- Add a `Getting Started` section

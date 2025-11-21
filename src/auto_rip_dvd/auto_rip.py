@@ -5,10 +5,10 @@ import ctypes
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict
-from application.Handbrake import Handbrake
-from application.MakeMKV import MakeMKV
-from application.VideoRipApp import VideoRipApp, TitleInfo
-from get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
+from auto_rip_dvd.application.Handbrake import Handbrake
+from auto_rip_dvd.application.MakeMKV import MakeMKV
+from auto_rip_dvd.application.VideoRipApp import VideoRipApp, TitleInfo
+from auto_rip_dvd.get_media_info import tmdb_movie_info, store_media_info, tmdb_tv_info
 from typing import List
 
 # TODO Try and find a better name for this
@@ -25,7 +25,7 @@ load_dotenv()
 def eject_dvd():
     print('Ejecting DVD!')
     try:
-        ctypes.windll.WINMM.mciSendStringW(u"set cdaudio door open",None,0,None)
+        ctypes.windll.WINMM.mciSendStringW(u"set cdaudio door open",None,0,None) # pyright: ignore[reportAttributeAccessIssue] - states that 'ctypes' has no attribute 'windll', but it does 
     except:
         os.system("eject cdrom")
 
@@ -62,8 +62,8 @@ def console_user_input():
         num_episodes = 0
 
         if special_feature_input != 'y':
-            season_number = int(input(f'Enter the season number for this disc: ').strip())
-            first_episode = int(input(f'Enter the first episode number: ').strip())
+            season_number = int(input('Enter the season number for this disc: ').strip())
+            first_episode = int(input('Enter the first episode number: ').strip())
             num_episodes = int((input('Enter the number of episodes on the disc: ')).strip())
 
         tv_show_info = {
@@ -80,7 +80,7 @@ def console_user_input():
 
 # NOTE: Need to split this function up, as it is too large
 # NOTE: Add a check to see if the rip was successful and if so call store_media_info
-def main(output_folders, user_config):
+def dvd_rip_workflow(output_folders, user_config):
     # This is modified, if there is a tv show and therefore needs to be copied to ensure that thr argument is not modified
     out_folders = copy.deepcopy(output_folders)
     titles_to_rip = [] # NOTE: rename this variable, as it no longer holds the title id
@@ -116,7 +116,7 @@ def main(output_folders, user_config):
             # Get the runtime and episode name for each episode on the disc
             for episode_number in range(first_episode, first_episode + num_episodes):
                 # Need to subtract 1 to episode_number as the list is 0-indexed
-                episode_info = media_info['seasons'][season_number-1]['episodes'][episode_number-1]
+                episode_info = media_info['seasons'][season_number-1]['episodes'][episode_number-1] if media_info is not None else {'runtime': -1, 'name': f'Episode {episode_number-1}'}
                 formatted_episode = f"{episode_number:02d}"
                 titles_to_rip.append(
                     {
@@ -146,7 +146,7 @@ def main(output_folders, user_config):
         titles_to_rip.append(
             {
                 'file_name': dvd_title,
-                'expected_runtime': media_info['runtime']
+                'expected_runtime': media_info['runtime'] if media_info is not None else -1
             }
         )
 
@@ -156,8 +156,8 @@ def main(output_folders, user_config):
     # TODO See a better way, as this check is performed in 'makemkv.disc_backup'. The option could just be removed as everywhere else performs the check anyways
     iso_filename = Path(out_folders['iso']) / f"{iso_name}.iso"
 
-    handbrake = Handbrake("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe", out_folders['mp4'])
-    makemkv = MakeMKV("C:\\Program Files (x86)\\MakeMKV\\makemkvcon", out_folders['mkv'], out_folders['iso'])
+    handbrake = Handbrake(Path("C:\\Program Files\\HandBrake\\HandBrakeCLI.exe"), out_folders['mp4'])
+    makemkv = MakeMKV(Path("C:\\Program Files (x86)\\MakeMKV\\makemkvcon"), out_folders['mkv'], out_folders['iso'])
 
     video_rip_apps: List[RipApps] = [
         RipApps(name="MakeMKV", app=makemkv, title_info=[]),
@@ -168,6 +168,9 @@ def main(output_folders, user_config):
     if not os.path.exists(iso_filename):
         encode = 'y'
         iso_filename = makemkv.disc_backup(iso_name)
+        if iso_filename is None:
+            print("Failed to create ISO image, aborting process.")
+            return
         print('-' * 20)
         print('ISO Completed')
         print('-' * 20)
@@ -207,25 +210,6 @@ def main(output_folders, user_config):
     else:
         print("\nEncoding skipped.")
 
-    if os.getenv('NO_EJECT') != True:
+    if not os.getenv('NO_EJECT'):
         store_media_info(media_info)
         eject_dvd()
-
-
-if __name__ == '__main__':
-    iso_out_dir = os.getenv('ISO_OUT_DIR', 'C:\\iso_movies\\')
-    mp4_out_dir = os.getenv('MP4_OUT_DIR', 'C:\\mp4_movies\\')
-    mkv_out_dir = os.getenv('MKV_OUT_DIR', 'C:\\mkv_movies\\')
-    disc_drive = os.getenv('DISC_DRIVE', 'E:\\')
-
-    output_folders = {
-        'mp4': mp4_out_dir,
-        'mkv': mkv_out_dir,
-        'iso': iso_out_dir
-    }
-
-    user_input = console_user_input()
-
-    while True:
-        if dvd_detected(disc_drive):
-            main(output_folders, user_input)

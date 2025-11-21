@@ -36,8 +36,7 @@ def get_director(crew):
                 'tmdb_id': crew_member['id'],
                 'profile_path': f"https://image.tmdb.org/t/p/w500{crew_member['profile_path']}" if crew_member['profile_path'] else None,
                 'gender': crew_member['gender'],
-                'tmdb_credit_id': crew_member['credit_id'],
-                'tmdb_id': crew_member['id']
+                'tmdb_credit_id': crew_member['credit_id']
             }
     return None
 
@@ -61,6 +60,7 @@ def tmdb_tv_info(tv_name, tmdb_api_key=os.getenv('TMDB_API_KEY', None)):
         if query_response.status_code == 200:
             data = query_response.json()
             if data['results']:
+                tv_info = None
                 query_result = data['results'][0]  # Return the first result
                 tmdb_id = query_result['id']
                 tv_url = f"{base_url}/tv/{tmdb_id}?api_key={tmdb_api_key}&append_to_response=credits"
