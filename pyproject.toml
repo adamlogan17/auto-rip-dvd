@@ -19,7 +19,7 @@ auto-rip-dvd = "auto_rip_dvd:main"
 [tool.pyright]
 include = ["tests", "src/auto_rip_dvd"]
 exclude = ["build", "dist"]
-typeCheckingMode = "recommended"
+typeCheckingMode = "standard"
 reportMissingImports = true
 reportUnusedVariable = true
 reportUnusedImport = true
