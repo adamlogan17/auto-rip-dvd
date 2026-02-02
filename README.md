@@ -36,7 +36,7 @@ The environment variable `PLEX_CLAIM_CODE` is required for plex to set up. Go [h
 
 ```console
 docker compose up -d
-docker exec -it auto-ripping python3 auto-rip.py
+docker exec -it auto-ripping uv run --frozen auto-rip-dvd
 ```
 
 To stop the containers from running, use the command below.
