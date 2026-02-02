@@ -178,3 +178,5 @@ cython_debug/
 movie-info.json
 
 *service-account.json
+
+plexmediaserver/

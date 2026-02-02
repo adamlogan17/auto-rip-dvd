@@ -32,6 +32,8 @@ A free registration key can be found [here](https://forum.makemkv.com/forum/view
 
 If wishing to run the program using `docker compose` the 2 following commands must be used.
 
+The environment variable `PLEX_CLAIM_CODE` is required for plex to set up. Go [here](https://account.plex.tv/en-GB/claim) to generate this claim code.
+
 ```console
 docker compose up -d
 docker exec -it auto-ripping python3 auto-rip.py
